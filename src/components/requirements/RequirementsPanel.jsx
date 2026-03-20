@@ -1,222 +1,147 @@
 // filepath: src/components/requirements/RequirementsPanel.jsx
-// Purpose: Room configuration UI — reads and writes to requirementsStore, calls generate via hook
+// Purpose: Room configuration UI — composes BasicModeForm, AdvancedModeForm, and VastuOptions.
+// Reads mode from store, delegates all form logic to sub-components.
 
 import useRequirementsStore from '../../store/requirementsStore.js'
+import useLandStore from '../../store/landStore.js'
 import { useLayoutGenerator } from '../../hooks/useLayoutGenerator.js'
-
-const ROOM_TYPE_OPTIONS = [
-  { value: 'master_bedroom', label: 'Master Bedroom' },
-  { value: 'bedroom',        label: 'Bedroom' },
-  { value: 'kitchen',        label: 'Kitchen' },
-  { value: 'living_room',    label: 'Living Room' },
-  { value: 'dining_room',    label: 'Dining Room' },
-  { value: 'bathroom',       label: 'Bathroom' },
-  { value: 'pooja',          label: 'Pooja' },
-  { value: 'balcony',        label: 'Balcony' },
-]
+import BasicModeForm from './BasicModeForm.jsx'
+import AdvancedModeForm from './AdvancedModeForm.jsx'
+import VastuOptions from './VastuOptions.jsx'
+import { validateRoomFit, validateDirectionConflicts } from '../../utils/validators.js'
 
 export default function RequirementsPanel({ onBack }) {
-  // All requirements state lives in the store — not local useState
-  const mode = useRequirementsStore((s) => s.mode)
-  const vastuEnabled = useRequirementsStore((s) => s.vastuEnabled)
-  const bedroomCount = useRequirementsStore((s) => s.bedroomCount)
-  const hasKitchen = useRequirementsStore((s) => s.hasKitchen)
+  const mode  = useRequirementsStore((s) => s.mode)
+  const rooms = useRequirementsStore((s) => s.rooms)
+  const bedroomCount  = useRequirementsStore((s) => s.bedroomCount)
+  const hasKitchen    = useRequirementsStore((s) => s.hasKitchen)
   const hasLivingRoom = useRequirementsStore((s) => s.hasLivingRoom)
   const hasDiningRoom = useRequirementsStore((s) => s.hasDiningRoom)
-  const rooms = useRequirementsStore((s) => s.rooms)
+  const floors        = useRequirementsStore((s) => s.floors)
   const setMode = useRequirementsStore((s) => s.setMode)
-  const setVastuEnabled = useRequirementsStore((s) => s.setVastuEnabled)
-  const setBedroomCount = useRequirementsStore((s) => s.setBedroomCount)
-  const setHasKitchen = useRequirementsStore((s) => s.setHasKitchen)
-  const setHasLivingRoom = useRequirementsStore((s) => s.setHasLivingRoom)
-  const setHasDiningRoom = useRequirementsStore((s) => s.setHasDiningRoom)
-  const addRoom = useRequirementsStore((s) => s.addRoom)
-  const removeRoom = useRequirementsStore((s) => s.removeRoom)
-  const updateRoom = useRequirementsStore((s) => s.updateRoom)
 
-  // Generate logic lives in the hook — not in this component
+  const polygonPoints = useLandStore((s) => s.polygonPoints)
+  const dimensions    = useLandStore((s) => s.dimensions)
+  const unit          = useLandStore((s) => s.unit)
+
   const { generate, isGenerating, generationError } = useLayoutGenerator()
+
+  // Run Phase 4 validations — warn but never hard-block
+  const warnings = []
+
+  const roomFitWarning = validateRoomFit({
+    mode,
+    bedroomCount,
+    hasKitchen,
+    hasLivingRoom,
+    hasDiningRoom,
+    floors,
+    rooms,
+    polygonPoints,
+    dimensions,
+    unit,
+  })
+  if (roomFitWarning) warnings.push(roomFitWarning)
+
+  if (mode === 'advanced') {
+    const directionWarnings = validateDirectionConflicts(rooms)
+    warnings.push(...directionWarnings)
+  }
 
   return (
     <div className="max-w-4xl mx-auto">
-      <div className="bg-white rounded-lg shadow-lg p-6">
+      <div className="bg-white rounded-xl shadow-lg overflow-hidden">
 
         {/* Header */}
-        <div className="mb-6">
-          <h2 className="text-2xl font-bold text-slate-900 mb-2">Room Configuration</h2>
-          <p className="text-slate-600">Configure your room requirements for layout generation</p>
+        <div className="px-6 py-5 border-b border-slate-100">
+          <h2 className="text-xl font-bold text-slate-900">Room Requirements</h2>
+          <p className="text-sm text-slate-500 mt-0.5">
+            Configure what you need — the engine handles placement.
+          </p>
         </div>
 
-        {/* Mode selection */}
-        <div className="mb-8 pb-6 border-b border-slate-200">
-          <h3 className="text-lg font-semibold text-slate-900 mb-4">Configuration Mode</h3>
-          <div className="flex gap-4">
-            {['basic', 'advanced'].map((m) => (
-              <label key={m} className="flex items-center cursor-pointer">
-                <input
-                  type="radio"
-                  value={m}
-                  checked={mode === m}
-                  onChange={() => setMode(m)}
-                  className="w-4 h-4 text-blue-600"
-                />
-                <span className="ml-2 text-slate-700 capitalize">{m}</span>
-              </label>
-            ))}
-          </div>
-        </div>
+        <div className="px-6 py-6 space-y-8">
 
-        {/* Vastu toggle */}
-        <div className="mb-8 pb-6 border-b border-slate-200">
-          <div className="flex items-center justify-between">
-            <div>
-              <h3 className="text-lg font-semibold text-slate-900">Vastu Compliance</h3>
-              <p className="text-sm text-slate-600 mt-1">
-                {vastuEnabled
-                  ? 'Layout will be optimized for Vastu Shastra principles'
-                  : 'Layout optimization disabled'}
-              </p>
-            </div>
-            <label className="flex items-center cursor-pointer">
-              <input
-                type="checkbox"
-                checked={vastuEnabled}
-                onChange={(e) => setVastuEnabled(e.target.checked)}
-                className="w-5 h-5 text-blue-600"
-              />
-              <span className="ml-2 text-slate-700 font-medium">
-                {vastuEnabled ? 'Enabled' : 'Disabled'}
-              </span>
+          {/* Mode toggle */}
+          <div>
+            <label className="block text-xs text-slate-400 uppercase tracking-wide font-semibold mb-3">
+              Configuration Mode
             </label>
-          </div>
-        </div>
-
-        {/* Basic mode */}
-        {mode === 'basic' && (
-          <div className="mb-8 space-y-6">
-            <div>
-              <label className="block text-sm font-semibold text-slate-900 mb-3">
-                Number of Bedrooms: {bedroomCount}
-              </label>
-              <input
-                type="range"
-                min="1"
-                max="5"
-                value={bedroomCount}
-                onChange={(e) => setBedroomCount(parseInt(e.target.value))}
-                className="w-full h-2 bg-slate-200 rounded-lg"
-              />
-              <div className="flex justify-between text-xs text-slate-600 mt-1">
-                <span>1 BR</span>
-                <span>5 BR</span>
-              </div>
-            </div>
-
-            <div>
-              <h4 className="text-sm font-semibold text-slate-900 mb-3">Amenities</h4>
-              <div className="space-y-2">
-                {[
-                  { label: 'Kitchen',     value: hasKitchen,    setter: setHasKitchen },
-                  { label: 'Living Room', value: hasLivingRoom, setter: setHasLivingRoom },
-                  { label: 'Dining Room', value: hasDiningRoom, setter: setHasDiningRoom },
-                ].map(({ label, value, setter }) => (
-                  <label key={label} className="flex items-center cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={value}
-                      onChange={(e) => setter(e.target.checked)}
-                      className="w-4 h-4 text-blue-600"
-                    />
-                    <span className="ml-2 text-slate-700">{label}</span>
-                  </label>
-                ))}
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* Advanced mode */}
-        {mode === 'advanced' && (
-          <div className="mb-8">
-            <div className="flex justify-between items-center mb-4">
-              <h3 className="text-lg font-semibold text-slate-900">Custom Rooms</h3>
-              <button
-                onClick={() => addRoom({ type: 'bedroom', minArea: 90, maxArea: 160 })}
-                className="px-3 py-1.5 text-sm bg-slate-100 text-slate-700 border border-slate-300 rounded hover:bg-slate-200 transition cursor-pointer"
-              >
-                + Add Room
-              </button>
-            </div>
-
-            <div className="space-y-4">
-              {rooms.map((room, idx) => (
-                <div key={idx} className="p-4 bg-slate-50 rounded-lg border border-slate-200">
-                  <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
-                    <select
-                      value={room.type}
-                      onChange={(e) => updateRoom(idx, 'type', e.target.value)}
-                      className="px-3 py-2 border border-slate-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    >
-                      {ROOM_TYPE_OPTIONS.map((opt) => (
-                        <option key={opt.value} value={opt.value}>{opt.label}</option>
-                      ))}
-                    </select>
-
-                    <input
-                      type="number"
-                      placeholder="Min area"
-                      value={room.minArea}
-                      onChange={(e) => updateRoom(idx, 'minArea', parseInt(e.target.value))}
-                      className="px-3 py-2 border border-slate-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    />
-
-                    <input
-                      type="number"
-                      placeholder="Max area"
-                      value={room.maxArea}
-                      onChange={(e) => updateRoom(idx, 'maxArea', parseInt(e.target.value))}
-                      className="px-3 py-2 border border-slate-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    />
-
-                    <button
-                      onClick={() => removeRoom(idx)}
-                      className="px-3 py-2 bg-red-100 text-red-700 rounded text-sm hover:bg-red-200 transition cursor-pointer"
-                    >
-                      Remove
-                    </button>
-                  </div>
-                </div>
+            <div className="inline-flex rounded-lg border border-slate-200 p-0.5 bg-slate-50">
+              {['basic', 'advanced'].map((m) => (
+                <button
+                  key={m}
+                  onClick={() => setMode(m)}
+                  className={`px-5 py-1.5 text-sm font-medium rounded-md transition cursor-pointer ${
+                    mode === m
+                      ? 'bg-white text-slate-900 shadow-sm'
+                      : 'text-slate-500 hover:text-slate-700'
+                  }`}
+                >
+                  {m.charAt(0).toUpperCase() + m.slice(1)}
+                </button>
               ))}
             </div>
           </div>
-        )}
 
-        {/* Generation error */}
-        {generationError && (
-          <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded text-red-700 text-sm">
-            {generationError}
+          {/* Mode-specific form */}
+          {mode === 'basic' ? (
+            <BasicModeForm />
+          ) : (
+            <AdvancedModeForm validationWarnings={warnings} />
+          )}
+
+          {/* Vastu options — shown in both modes */}
+          <div className="pt-2 border-t border-slate-100">
+            <label className="block text-xs text-slate-400 uppercase tracking-wide font-semibold mb-3">
+              Vastu Compliance
+            </label>
+            <VastuOptions />
           </div>
-        )}
 
-        {/* Actions */}
-        <div className="flex gap-3">
-          <button
-            onClick={onBack}
-            className="px-5 py-2.5 text-sm text-slate-500 bg-transparent border border-slate-200 rounded-lg cursor-pointer hover:text-slate-700 hover:border-slate-300 transition"
-          >
-            ← Back
-          </button>
-          <button
-            onClick={generate}
-            disabled={isGenerating}
-            className={`flex-1 py-2.5 text-sm font-semibold rounded-lg border-none transition cursor-pointer ${
-              isGenerating
-                ? 'bg-slate-300 text-slate-500 cursor-not-allowed'
-                : 'bg-blue-600 text-white hover:bg-blue-700'
-            }`}
-          >
-            {isGenerating ? 'Generating...' : 'Generate Layouts'}
-          </button>
+          {/* Warnings (basic mode — advanced mode shows inline) */}
+          {mode === 'basic' && warnings.length > 0 && (
+            <div className="space-y-2">
+              {warnings.map((warn, i) => (
+                <div
+                  key={i}
+                  className="flex items-start gap-2 px-4 py-3 bg-amber-50 border border-amber-200 rounded-lg text-sm text-amber-800"
+                >
+                  <span className="mt-0.5 text-amber-500 shrink-0">⚠</span>
+                  <span>{warn}</span>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* Generation error */}
+          {generationError && (
+            <div className="px-4 py-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700">
+              {generationError}
+            </div>
+          )}
+
+          {/* Actions */}
+          <div className="flex gap-3 pt-2">
+            <button
+              onClick={onBack}
+              className="px-5 py-2.5 text-sm text-slate-500 bg-white border border-slate-200 rounded-lg cursor-pointer hover:border-slate-300 hover:text-slate-700 transition"
+            >
+              ← Back
+            </button>
+            <button
+              onClick={generate}
+              disabled={isGenerating}
+              className={`flex-1 py-2.5 text-sm font-semibold rounded-lg border-none transition cursor-pointer ${
+                isGenerating
+                  ? 'bg-slate-200 text-slate-400 cursor-not-allowed'
+                  : 'bg-blue-600 text-white hover:bg-blue-700'
+              }`}
+            >
+              {isGenerating ? 'Generating...' : 'Generate Layouts'}
+            </button>
+          </div>
+
         </div>
       </div>
     </div>
