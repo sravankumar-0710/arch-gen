@@ -1,21 +1,25 @@
 // filepath: src/App.jsx
-// Purpose: Root component — sets up React Router and wraps the app in context providers
+// Purpose: Root component — sets up React Router and calls loadUser on mount.
 
+import { useEffect } from 'react'
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import LoginPage from './pages/LoginPage.jsx'
 import SignupPage from './pages/SignupPage.jsx'
 import DashboardPage from './pages/DashboardPage.jsx'
 import EditorPage from './pages/EditorPage.jsx'
 import NotFoundPage from './pages/NotFoundPage.jsx'
+import ProtectedRoute from './components/common/ProtectedRoute.jsx'
 import useAuth from './hooks/useAuth.js'
 
-// ProtectedRoute redirects unauthenticated users to /login
-function ProtectedRoute({ children }) {
-  const { isAuthenticated } = useAuth()
-  return isAuthenticated ? children : <Navigate to="/login" replace />
-}
-
 export default function App() {
+  const { loadUser } = useAuth()
+
+  // Rehydrate user object on every page load/refresh.
+  // Token may exist in localStorage but user is null until verified.
+  useEffect(() => {
+    loadUser()
+  }, [])
+
   return (
     <BrowserRouter>
       <Routes>

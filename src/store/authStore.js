@@ -1,8 +1,8 @@
 // filepath: src/store/authStore.js
-// Purpose: Global auth state — current user, JWT token, login/logout actions.
+// Purpose: Global auth state — current user, JWT token, and simple state setters.
+// Async orchestration (calling authService) lives in useAuth.js, not here.
 
 import { create } from 'zustand'
-import { login as loginApi, register as registerApi, getMe } from '../services/authService.js'
 
 const TOKEN_KEY = 'auth_token'
 
@@ -13,65 +13,28 @@ const useAuthStore = create((set) => ({
   isLoading: false,
   error: null,
 
-  login: async (credentials) => {
-    set({ isLoading: true, error: null })
-    try {
-      const data = await loginApi(credentials)
-      const accessToken = data.data.token.access_token
-      localStorage.setItem(TOKEN_KEY, accessToken)
-      set({
-        user: data.data.user,
-        token: accessToken,
-        isAuthenticated: true,
-        isLoading: false,
-      })
-    } catch (err) {
-      set({ error: err.message, isLoading: false })
-      throw err
-    }
-  },
-
-  register: async (credentials) => {
-    set({ isLoading: true, error: null })
-    try {
-      const data = await registerApi(credentials)
-      const accessToken = data.data.token.access_token
-      localStorage.setItem(TOKEN_KEY, accessToken)
-      set({
-        user: data.data.user,
-        token: accessToken,
-        isAuthenticated: true,
-        isLoading: false,
-      })
-    } catch (err) {
-      set({ error: err.message, isLoading: false })
-      throw err
-    }
-  },
-
-  loadUser: async () => {
-    const token = localStorage.getItem(TOKEN_KEY)
-    if (!token) return
-    set({ isLoading: true })
-    try {
-      const data = await getMe()
-      set({ user: data.data, isAuthenticated: true, isLoading: false })
-    } catch {
+  setUser: (user) => set({ user }),
+  setToken: (token) => {
+    if (token) {
+      localStorage.setItem(TOKEN_KEY, token)
+    } else {
       localStorage.removeItem(TOKEN_KEY)
-      set({ user: null, token: null, isAuthenticated: false, isLoading: false })
     }
+    set({ token, isAuthenticated: !!token })
   },
-
-  logout: () => {
-    localStorage.removeItem(TOKEN_KEY)
-    set({ user: null, token: null, isAuthenticated: false, error: null })
-  },
-
+  setLoading: (isLoading) => set({ isLoading }),
+  setError: (error) => set({ error }),
   clearError: () => set({ error: null }),
 
   reset: () => {
     localStorage.removeItem(TOKEN_KEY)
-    set({ user: null, token: null, isAuthenticated: false, isLoading: false, error: null })
+    set({
+      user: null,
+      token: null,
+      isAuthenticated: false,
+      isLoading: false,
+      error: null,
+    })
   },
 }))
 

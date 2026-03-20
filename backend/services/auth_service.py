@@ -26,7 +26,6 @@ class AuthService:
         Raises:
             HTTPException: If email already exists
         """
-        # Check if user already exists
         existing_user = db.query(User).filter(User.email == user_data.email).first()
         if existing_user:
             raise HTTPException(
@@ -34,7 +33,6 @@ class AuthService:
                 detail="Email already registered"
             )
 
-        # Create new user
         hashed_password = hash_password(user_data.password)
         new_user = User(email=user_data.email, password_hash=hashed_password)
 
@@ -42,12 +40,11 @@ class AuthService:
         db.commit()
         db.refresh(new_user)
 
-        # Generate token
         access_token = create_access_token(data={"sub": str(new_user.id)})
 
         return {
             "user": UserResponse.model_validate(new_user),
-            "token": TokenResponse(access_token=access_token)
+            "token": TokenResponse(access_token=access_token),
         }
 
     @staticmethod
@@ -73,16 +70,15 @@ class AuthService:
                 detail="Invalid email or password"
             )
 
-        # Generate token
         access_token = create_access_token(data={"sub": str(user.id)})
 
         return {
             "user": UserResponse.model_validate(user),
-            "token": TokenResponse(access_token=access_token)
+            "token": TokenResponse(access_token=access_token),
         }
 
     @staticmethod
-    def get_user(db: Session, user_id: int) -> dict:
+    def get_user(db: Session, user_id: int) -> UserResponse:
         """
         Get user by ID.
 
@@ -91,7 +87,7 @@ class AuthService:
             user_id: User ID to fetch
 
         Returns:
-            User response object
+            UserResponse Pydantic model
 
         Raises:
             HTTPException: If user not found

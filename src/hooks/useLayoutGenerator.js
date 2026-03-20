@@ -8,7 +8,8 @@ import useRequirementsStore from '../store/requirementsStore.js'
 import { generateLayout } from '../services/generatorService.js'
 import { validatePolygon } from '../utils/geometry.js'
 
-export default function useLayoutGenerator() {
+// Named export — consistent with how hooks are imported across the codebase
+export function useLayoutGenerator() {
   const setLayoutOptions = useLayoutStore((state) => state.setLayoutOptions)
   const setIsGenerating = useLayoutStore((state) => state.setIsGenerating)
   const setGenerationError = useLayoutStore((state) => state.setGenerationError)
@@ -27,7 +28,7 @@ export default function useLayoutGenerator() {
   const rooms = useRequirementsStore((state) => state.rooms)
 
   const generate = async () => {
-    // Validate polygon before sending to backend
+    // Validate polygon client-side before hitting the backend
     const validationError = validatePolygon(polygonPoints)
     if (validationError) {
       setGenerationError(validationError)
@@ -48,6 +49,7 @@ export default function useLayoutGenerator() {
         mode,
         floors,
         vastuEnabled,
+        // Only include the relevant fields per mode
         bedroomCount: mode === 'basic' ? bedroomCount : undefined,
         rooms: mode === 'advanced' ? rooms : undefined,
       },
