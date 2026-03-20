@@ -48,3 +48,5 @@ htmlcov/
 # Temporary files
 *.tmp
 .claude/
+docs/
+debug/
