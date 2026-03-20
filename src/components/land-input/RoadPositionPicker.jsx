@@ -1,0 +1,55 @@
+// filepath: src/components/land-input/RoadPositionPicker.jsx
+// Purpose: Select which side of the polygon faces the road
+
+import useLandStore from '../../store/landStore.js'
+
+const ROAD_OPTIONS = [
+  { value: 0, label: 'Front (↓)', icon: '⬇' },
+  { value: 1, label: 'Right (→)', icon: '➡' },
+  { value: 2, label: 'Back (↑)', icon: '⬆' },
+  { value: 3, label: 'Left (←)', icon: '⬅' },
+]
+
+export default function RoadPositionPicker() {
+  const { roadSide, setRoadSide, isClosed } = useLandStore()
+
+  // ASSUMPTION: roadSide is one of: 0 | 1 | 2 | 3 (front/right/back/left)
+  // Disabled until polygon is fully closed
+  const isDisabled = !isClosed
+
+  return (
+    <div className="flex flex-col gap-3">
+      <div className="grid grid-cols-2 gap-2">
+        {ROAD_OPTIONS.map((option) => {
+          const isSelected = roadSide === option.value
+          return (
+            <button
+              key={option.value}
+              onClick={() => setRoadSide(option.value)}
+              disabled={isDisabled}
+              className={[
+                'p-3 rounded-xl border transition-all text-center flex flex-col gap-1.5 items-center',
+                isDisabled ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer',
+                isSelected
+                  ? 'border-[#d4a832] bg-[rgba(212,168,50,0.08)]'
+                  : 'border-white/[0.06] bg-[#141418] hover:border-white/[0.12]',
+              ].join(' ')}
+              title={option.label}
+            >
+              <div className="text-lg">{option.icon}</div>
+              <div className={`text-[11px] font-${isSelected ? '600' : '400'} ${isSelected ? 'text-[#d4a832]' : 'text-[#9d9a94]'}`}>
+                {option.label}
+              </div>
+            </button>
+          )
+        })}
+      </div>
+
+      {isDisabled && (
+        <p className="text-[11px] text-[#5a5855] m-0 text-center">
+          Close your polygon to select the road side
+        </p>
+      )}
+    </div>
+  )
+}
