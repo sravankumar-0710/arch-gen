@@ -6,136 +6,99 @@ import { Link } from 'react-router-dom'
 import useAuth from '../../hooks/useAuth.js'
 import { validateEmail, validatePassword } from '../../utils/validators.js'
 
+// Field must be defined OUTSIDE SignupForm — defining it inside causes remount
+// on every keystroke (React recreates the function → unmounts input → focus lost)
+function Field({ id, label, type, value, onChange, onKeyDown, placeholder, disabled, error }) {
+  return (
+    <div className="space-y-1.5">
+      <label htmlFor={id} className="block text-xs font-semibold text-ink-300 tracking-wider uppercase">
+        {label}
+      </label>
+      <input
+        id={id}
+        type={type}
+        value={value}
+        onChange={onChange}
+        onKeyDown={onKeyDown}
+        placeholder={placeholder}
+        disabled={disabled}
+        className="w-full h-10 px-3.5 rounded-lg bg-ink-800 border border-ink-500 text-sm text-ink-50 placeholder:text-ink-400 outline-none transition-all focus:border-accent-500 focus:ring-2 focus:ring-accent-500/20 disabled:opacity-40"
+      />
+      {error && <p className="text-xs text-red-400">{error}</p>}
+    </div>
+  )
+}
+
 export default function SignupForm({ onSuccess }) {
   const { register, isLoading, error, clearError } = useAuth()
-  const [email, setEmail] = useState('')
-  const [password, setPassword] = useState('')
+  const [email,           setEmail]           = useState('')
+  const [password,        setPassword]        = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
-  const [fieldErrors, setFieldErrors] = useState({})
+  const [fieldErrors,     setFieldErrors]     = useState({})
 
   const handleSubmit = async () => {
     clearError()
-
     const errors = {}
     const emailErr = validateEmail(email)
-    const passErr = validatePassword(password)
+    const passErr  = validatePassword(password)
     if (emailErr) errors.email = emailErr
-    if (passErr) errors.password = passErr
+    if (passErr)  errors.password = passErr
     if (password !== confirmPassword) errors.confirmPassword = 'Passwords do not match.'
-    if (Object.keys(errors).length > 0) {
-      setFieldErrors(errors)
-      return
-    }
-
+    if (Object.keys(errors).length) { setFieldErrors(errors); return }
     setFieldErrors({})
-    try {
-      await register({ email, password })
-      onSuccess()
-    } catch {
-      // error already set in store via useAuth
-    }
+    try { await register({ email, password }); onSuccess() } catch {}
   }
 
-  const handleKeyDown = (e) => {
-    if (e.key === 'Enter') handleSubmit()
-  }
+  const onKey = (e) => { if (e.key === 'Enter') handleSubmit() }
 
   return (
-    <div className="p-8">
-      {/* API error */}
+    <div className="w-full space-y-4">
+
       {error && (
-        <div className="mb-6 px-4 py-3 rounded-xl bg-[rgba(224,82,82,0.08)] border border-[rgba(224,82,82,0.2)] text-[#e05252] text-sm flex items-start gap-3">
-          <svg width="14" height="14" viewBox="0 0 14 14" fill="none" className="flex-shrink-0 mt-0.5">
-            <circle cx="7" cy="7" r="6" stroke="currentColor" strokeWidth="1.2" />
-            <path d="M7 4v3.5M7 9.5v.5" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
+        <div className="flex items-center gap-2.5 px-3.5 py-3 rounded-lg bg-red-500/10 border border-red-500/20 text-red-400 text-sm">
+          <svg width="15" height="15" viewBox="0 0 15 15" fill="none" className="shrink-0">
+            <circle cx="7.5" cy="7.5" r="6.5" stroke="currentColor" strokeWidth="1.2"/>
+            <path d="M7.5 4.5v3.5m0 2v.5" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"/>
           </svg>
-          <span>{error}</span>
+          {error}
         </div>
       )}
 
-      {/* Email */}
-      <div className="mb-5">
-        <label htmlFor="signup-email" className="block text-[10px] font-medium tracking-[0.15em] uppercase text-[#5a5855] mb-2">
-          Email Address
-        </label>
-        <input
-          id="signup-email"
-          type="email"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-          onKeyDown={handleKeyDown}
-          placeholder="you@example.com"
-          disabled={isLoading}
-          className="w-full bg-[#0f0f12] border border-white/[0.07] rounded-xl px-4 py-3 text-sm text-[#f0ede8] placeholder:text-[#3a3835] outline-none transition-all focus:border-[#d4a832] focus:shadow-[0_0_0_3px_rgba(212,168,50,0.1)] disabled:opacity-50 disabled:cursor-not-allowed"
-        />
-        {fieldErrors.email && (
-          <p className="mt-1.5 text-xs text-[#e05252]">{fieldErrors.email}</p>
-        )}
-      </div>
+      <Field
+        id="s-email" label="Email address" type="email"
+        value={email} onChange={(e) => setEmail(e.target.value)}
+        onKeyDown={onKey} placeholder="you@company.com"
+        disabled={isLoading} error={fieldErrors.email}
+      />
+      <Field
+        id="s-pass" label="Password" type="password"
+        value={password} onChange={(e) => setPassword(e.target.value)}
+        onKeyDown={onKey} placeholder="Min. 8 characters"
+        disabled={isLoading} error={fieldErrors.password}
+      />
+      <Field
+        id="s-confirm" label="Confirm password" type="password"
+        value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)}
+        onKeyDown={onKey} placeholder="••••••••"
+        disabled={isLoading} error={fieldErrors.confirmPassword}
+      />
 
-      {/* Password */}
-      <div className="mb-5">
-        <label htmlFor="signup-password" className="block text-[10px] font-medium tracking-[0.15em] uppercase text-[#5a5855] mb-2">
-          Password
-        </label>
-        <input
-          id="signup-password"
-          type="password"
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-          onKeyDown={handleKeyDown}
-          placeholder="••••••••"
-          disabled={isLoading}
-          className="w-full bg-[#0f0f12] border border-white/[0.07] rounded-xl px-4 py-3 text-sm text-[#f0ede8] placeholder:text-[#3a3835] outline-none transition-all focus:border-[#d4a832] focus:shadow-[0_0_0_3px_rgba(212,168,50,0.1)] disabled:opacity-50 disabled:cursor-not-allowed"
-        />
-        {fieldErrors.password && (
-          <p className="mt-1.5 text-xs text-[#e05252]">{fieldErrors.password}</p>
-        )}
-      </div>
-
-      {/* Confirm password */}
-      <div className="mb-6">
-        <label htmlFor="signup-confirm" className="block text-[10px] font-medium tracking-[0.15em] uppercase text-[#5a5855] mb-2">
-          Confirm Password
-        </label>
-        <input
-          id="signup-confirm"
-          type="password"
-          value={confirmPassword}
-          onChange={(e) => setConfirmPassword(e.target.value)}
-          onKeyDown={handleKeyDown}
-          placeholder="••••••••"
-          disabled={isLoading}
-          className="w-full bg-[#0f0f12] border border-white/[0.07] rounded-xl px-4 py-3 text-sm text-[#f0ede8] placeholder:text-[#3a3835] outline-none transition-all focus:border-[#d4a832] focus:shadow-[0_0_0_3px_rgba(212,168,50,0.1)] disabled:opacity-50 disabled:cursor-not-allowed"
-        />
-        {fieldErrors.confirmPassword && (
-          <p className="mt-1.5 text-xs text-[#e05252]">{fieldErrors.confirmPassword}</p>
-        )}
-      </div>
-
-      {/* Submit */}
       <button
-        onClick={handleSubmit}
-        disabled={isLoading}
-        className="w-full flex items-center justify-center gap-2 px-6 py-3 text-sm font-semibold rounded-xl border-none transition-all bg-[#d4a832] text-[#0a0a0c] cursor-pointer hover:bg-[#f0c84a] hover:shadow-[0_0_24px_rgba(212,168,50,0.35)] active:scale-[0.98] disabled:bg-[#8a6a1a] disabled:text-[#5a4a15] disabled:cursor-not-allowed disabled:shadow-none"
+        onClick={handleSubmit} disabled={isLoading}
+        className="w-full h-10 flex items-center justify-center gap-2 rounded-lg text-sm font-semibold bg-accent-600 text-white border-none cursor-pointer transition-all hover:bg-accent-500 hover:shadow-glow-sm active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed mt-2"
       >
-        {isLoading ? (
-          <>
-            <span className="w-4 h-4 border-2 border-[#5a4a15] border-r-transparent rounded-full animate-spin" />
-            Creating account…
-          </>
-        ) : (
-          'Create Account →'
-        )}
+        {isLoading
+          ? <><span className="w-4 h-4 rounded-full border-2 border-white/20 border-t-white/80 animate-spin"/>Creating account…</>
+          : 'Create account →'
+        }
       </button>
 
-      {/* Login link */}
-      <div className="mt-6 pt-6 border-t border-white/[0.04] text-center text-sm text-[#5a5855]">
+      <p className="text-center text-sm text-ink-300 pt-1">
         Already have an account?{' '}
-        <Link to="/login" className="font-medium text-[#d4a832] no-underline transition-colors hover:text-[#f0c84a]">
+        <Link to="/login" className="text-accent-400 font-semibold hover:text-accent-300 transition-colors no-underline">
           Sign in
         </Link>
-      </div>
+      </p>
     </div>
   )
 }

@@ -1,55 +1,88 @@
 // filepath: src/pages/SignupPage.jsx
-// Purpose: Signup page shell — layout and branding only. Form logic lives in SignupForm.jsx.
+// Purpose: Signup page — matching split panel layout.
 
 import { useNavigate } from 'react-router-dom'
 import SignupForm from '../components/auth/SignupForm.jsx'
+
+const STEPS = [
+  { n: '1', text: 'Create your account' },
+  { n: '2', text: 'Draw your land plot' },
+  { n: '3', text: 'Set room requirements' },
+  { n: '4', text: 'Generate floor plans' },
+]
 
 export default function SignupPage() {
   const navigate = useNavigate()
 
   return (
-    <div className="min-h-screen bg-[#0a0a0c] flex items-center justify-center px-4 relative font-[Inter,system-ui,sans-serif]">
+    <div className="min-h-screen flex bg-ink-950 font-sans">
 
-      {/* Blueprint grid background */}
-      <div
-        className="absolute inset-0 pointer-events-none opacity-[0.04]"
-        style={{
-          backgroundImage: 'linear-gradient(rgba(212,168,50,0.3) 1px, transparent 1px), linear-gradient(90deg, rgba(212,168,50,0.3) 1px, transparent 1px)',
-          backgroundSize: '50px 50px',
-        }}
-      />
+      {/* ── Left panel ── */}
+      <div className="hidden lg:flex w-[460px] xl:w-[500px] flex-shrink-0 flex-col justify-between p-10 bg-ink-900 border-r border-ink-700/50 relative overflow-hidden">
 
-      <div className="relative w-full max-w-[420px] z-10">
-
-        {/* Logo + heading */}
         <div
-          className="text-center mb-12"
-          style={{ animation: 'fadeUp 0.6s cubic-bezier(0.16,1,0.3,1) both' }}
-        >
-          <div className="w-12 h-12 mx-auto mb-6">
-            <svg viewBox="0 0 36 36" fill="none" className="w-full h-full">
-              <rect x="4" y="4" width="28" height="28" stroke="#d4a832" strokeWidth="1.5" fill="none" />
-              <rect x="4" y="4" width="14" height="14" stroke="#d4a832" strokeWidth="1" fill="rgba(212,168,50,0.06)" />
-              <rect x="18" y="4" width="14" height="28" stroke="#d4a832" strokeWidth="1" fill="rgba(212,168,50,0.04)" />
-              <rect x="4" y="18" width="14" height="14" stroke="#d4a832" strokeWidth="1" fill="rgba(212,168,50,0.04)" />
+          className="absolute inset-0 pointer-events-none"
+          style={{
+            backgroundImage: 'radial-gradient(circle, rgba(99,102,241,0.12) 1px, transparent 1px)',
+            backgroundSize: '28px 28px',
+          }}
+        />
+        <div className="absolute top-0 inset-x-0 h-px bg-gradient-to-r from-transparent via-accent-500/60 to-transparent" />
+
+        {/* Logo */}
+        <div className="relative animate-fadeUp flex items-center gap-3">
+          <div className="w-8 h-8 rounded-lg bg-accent-600/20 border border-accent-500/30 flex items-center justify-center">
+            <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
+              <rect x="1" y="1" width="7" height="7" rx="1.5" fill="rgba(99,102,241,0.6)"/>
+              <rect x="10" y="1" width="7" height="7" rx="1.5" fill="rgba(99,102,241,0.4)"/>
+              <rect x="1" y="10" width="7" height="7" rx="1.5" fill="rgba(99,102,241,0.4)"/>
+              <rect x="10" y="10" width="7" height="7" rx="1.5" fill="rgba(99,102,241,0.2)"/>
             </svg>
           </div>
-          <h1 className="font-serif text-[32px] font-normal text-[#f0ede8] mb-2 tracking-normal">
-            ArchGen<span className="text-[#d4a832] italic"> AI</span>
-          </h1>
-          <p className="text-[#5a5855] text-sm">Create your account to get started</p>
+          <span className="text-[15px] font-bold text-ink-50 tracking-tight">ArchGen AI</span>
         </div>
 
-        {/* Card */}
-        <div
-          className="bg-[#141418] rounded-2xl border border-white/[0.06] overflow-hidden shadow-[0_0_0_1px_rgba(255,255,255,0.08),0_25px_50px_rgba(0,0,0,0.5)]"
-          style={{ animation: 'fadeUp 0.6s 0.1s cubic-bezier(0.16,1,0.3,1) both' }}
-        >
-          <div className="h-px bg-gradient-to-r from-transparent via-[#d4a832] to-transparent opacity-40" />
+        {/* Steps */}
+        <div className="relative animate-fadeUp animation-delay-100 space-y-1">
+          <p className="text-xs font-semibold text-ink-400 tracking-widest uppercase mb-5">Get started in 4 steps</p>
+          {STEPS.map((step, i) => (
+            <div key={i} className="flex items-center gap-4 py-3.5 border-b border-ink-700/40 last:border-0">
+              <div className="w-6 h-6 rounded-full bg-accent-500/15 border border-accent-500/25 flex items-center justify-center shrink-0">
+                <span className="text-[11px] font-bold text-accent-400">{step.n}</span>
+              </div>
+              <span className="text-sm font-medium text-ink-200">{step.text}</span>
+            </div>
+          ))}
+        </div>
+
+        <div className="relative text-xs text-ink-400 animate-fadeUp animation-delay-200">
+          Free to use · No credit card required
+        </div>
+      </div>
+
+      {/* ── Right panel ── */}
+      <div className="flex-1 flex items-center justify-center px-6 py-12">
+        <div className="w-full max-w-sm animate-fadeUp">
+
+          {/* Mobile logo */}
+          <div className="flex items-center gap-2.5 mb-8 lg:hidden">
+            <div className="w-7 h-7 rounded-lg bg-accent-600/20 border border-accent-500/30 flex items-center justify-center">
+              <svg width="14" height="14" viewBox="0 0 18 18" fill="none">
+                <rect x="1" y="1" width="7" height="7" rx="1.5" fill="rgba(99,102,241,0.6)"/>
+              </svg>
+            </div>
+            <span className="text-[15px] font-bold text-ink-50">ArchGen AI</span>
+          </div>
+
+          <div className="mb-7">
+            <h2 className="text-2xl font-bold text-ink-50 tracking-tight mb-1">Create your account</h2>
+            <p className="text-sm text-ink-300">Start designing floor plans in minutes</p>
+          </div>
+
           <SignupForm onSuccess={() => navigate('/dashboard', { replace: true })} />
         </div>
-
       </div>
+
     </div>
   )
 }

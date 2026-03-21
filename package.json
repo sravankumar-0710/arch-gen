@@ -7,7 +7,7 @@
     "dev": "vite --config src/vite.config.js",
     "build": "vite build --config src/vite.config.js",
     "preview": "vite preview --config src/vite.config.js",
-    "electron:dev": "NODE_ENV=development electron .",
+    "electron:dev": "cross-env NODE_ENV=development electron .",
     "electron:build": "electron-builder"
   },
   "dependencies": {
@@ -26,6 +26,7 @@
   "devDependencies": {
     "@vitejs/plugin-react": "^4.2.0",
     "autoprefixer": "^10.4.16",
+    "cross-env": "^10.1.0",
     "electron": "^27.0.0",
     "electron-builder": "^24.0.0",
     "postcss": "^8.4.31",

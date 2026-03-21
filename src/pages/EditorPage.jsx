@@ -43,18 +43,12 @@ export default function EditorPage() {
 
   const stepIndex = STEPS.findIndex((s) => s.id === phase)
 
-  // Load existing project data into stores
   useEffect(() => {
     async function loadProject() {
-      if (!projectId) {
-        setPageLoading(false)
-        return
-      }
-
+      if (!projectId) { setPageLoading(false); return }
       try {
         const data = await projectService.getProject(projectId)
         const project = data.data || data
-
         if (project.land_data) {
           const { polygonPoints, roadSide, northAngle, unit } = project.land_data
           setPolygonPoints(polygonPoints || [])
@@ -62,7 +56,6 @@ export default function EditorPage() {
           setNorthAngle(northAngle ?? 0)
           setUnit(unit || 'ft')
         }
-
         if (project.requirements) {
           setRequirements((prev) => ({ ...prev, ...project.requirements }))
         }
@@ -72,19 +65,13 @@ export default function EditorPage() {
         setPageLoading(false)
       }
     }
-
     loadProject()
   }, [projectId, setPolygonPoints, setRoadSide, setNorthAngle, setUnit])
 
   async function handleSaveLandData(landData) {
-    if (!projectId) {
-      setError('No project loaded')
-      return
-    }
-
+    if (!projectId) { setError('No project loaded'); return }
     setIsSaving(true)
     setError(null)
-
     try {
       await projectService.updateProject(projectId, { land_data: landData })
       setPhase('requirements')
@@ -113,11 +100,11 @@ export default function EditorPage() {
   }
 
   return (
-    <div className="h-screen bg-[#0a0a0c] flex flex-col overflow-hidden font-[Inter,system-ui,sans-serif]">
+    // Full viewport height, flex column, no overflow-hidden on outer shell
+    <div className="min-h-screen bg-[#0a0a0c] flex flex-col font-[Inter,system-ui,sans-serif]">
 
-      {/* Top bar */}
-      <header className="h-14 flex items-center justify-between px-6 border-b border-white/[0.05] bg-[#0f0f12] flex-shrink-0">
-        {/* Left: back + project name */}
+      {/* Top bar — sticky so it stays visible while scrolling */}
+      <header className="sticky top-0 z-20 h-14 flex items-center justify-between px-6 border-b border-white/[0.05] bg-[#0f0f12] flex-shrink-0">
         <div className="flex items-center gap-4">
           <button
             onClick={() => navigate('/dashboard')}
@@ -128,9 +115,7 @@ export default function EditorPage() {
             </svg>
             Dashboard
           </button>
-
           <div className="w-px h-4 bg-white/[0.08]" />
-
           <div className="flex items-center gap-2">
             <div className="w-5 h-5 opacity-60">
               <svg viewBox="0 0 36 36" fill="none" className="w-full h-full">
@@ -144,10 +129,8 @@ export default function EditorPage() {
           </div>
         </div>
 
-        {/* Centre: step indicator */}
         <StepIndicator steps={STEPS} currentStep={stepIndex} />
 
-        {/* Right: autosave indicator */}
         <div className="flex items-center gap-1.5 text-xs text-[#5a5855] font-mono">
           <span className="w-1.5 h-1.5 bg-[#3db87a] rounded-full" />
           Auto-saved
@@ -156,7 +139,7 @@ export default function EditorPage() {
 
       {/* Error banner */}
       {(error || generateError) && (
-        <div className="px-6 py-2.5 bg-[rgba(224,82,82,0.08)] border-b border-[rgba(224,82,82,0.15)] text-sm text-[#e05252] flex items-center gap-2">
+        <div className="px-6 py-2.5 bg-[rgba(224,82,82,0.08)] border-b border-[rgba(224,82,82,0.15)] text-sm text-[#e05252] flex items-center gap-2 flex-shrink-0">
           <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
             <circle cx="7" cy="7" r="6" stroke="#e05252" strokeWidth="1.2" />
             <path d="M7 4v3.5M7 9.5v.5" stroke="#e05252" strokeWidth="1.4" strokeLinecap="round" />
@@ -171,40 +154,42 @@ export default function EditorPage() {
         </div>
       )}
 
-      {/* Phase content */}
-      {pageLoading ? (
-        <div className="flex-1 flex items-center justify-center">
-          <p className="text-[#9d9a94]">Loading project...</p>
-        </div>
-      ) : phase === 'land' ? (
-        <div className="flex-1 flex items-center justify-center p-8 overflow-y-auto bg-[#0a0a0c]">
-          <div className="w-full max-w-[1200px]">
-            <div className="bg-[#141418] rounded-2xl border border-white/[0.06] overflow-hidden">
-              <div className="h-px bg-gradient-to-r from-transparent via-[#d4a832] to-transparent opacity-40" />
-              <div className="p-8">
-                <LandInputPanel onSave={handleSaveLandData} isLoading={isSaving} />
+      {/* Scrollable content area */}
+      <main className="flex-1 overflow-y-auto">
+        {pageLoading ? (
+          <div className="flex items-center justify-center h-64">
+            <p className="text-[#9d9a94]">Loading project...</p>
+          </div>
+        ) : phase === 'land' ? (
+          <div className="p-6 bg-[#0a0a0c]">
+            <div className="w-full max-w-[1100px] mx-auto">
+              <div className="bg-[#141418] rounded-2xl border border-white/[0.06] overflow-hidden">
+                <div className="h-px bg-gradient-to-r from-transparent via-[#d4a832] to-transparent opacity-40" />
+                <div className="p-6">
+                  <LandInputPanel onSave={handleSaveLandData} isLoading={isSaving} />
+                </div>
               </div>
             </div>
           </div>
-        </div>
-      ) : phase === 'requirements' ? (
-        <RequirementsPanel
-          onBack={() => setPhase('land')}
-          onGenerate={handleGenerate}
-          isLoading={isGenerating}
-          requirements={requirements}
-          setRequirements={setRequirements}
-        />
-      ) : phase === 'generating' ? (
-        <GeneratingState />
-      ) : phase === 'results' ? (
-        <LayoutSelector
-          layouts={layouts}
-          onSave={handleSaveLayout}
-          isSaving={isSaving}
-          onBack={() => setPhase('requirements')}
-        />
-      ) : null}
+        ) : phase === 'requirements' ? (
+          <RequirementsPanel
+            onBack={() => setPhase('land')}
+            onGenerate={handleGenerate}
+            isLoading={isGenerating}
+            requirements={requirements}
+            setRequirements={setRequirements}
+          />
+        ) : phase === 'generating' ? (
+          <GeneratingState />
+        ) : phase === 'results' ? (
+          <LayoutSelector
+            layouts={layouts}
+            onSave={handleSaveLayout}
+            isSaving={isSaving}
+            onBack={() => setPhase('requirements')}
+          />
+        ) : null}
+      </main>
     </div>
   )
 }

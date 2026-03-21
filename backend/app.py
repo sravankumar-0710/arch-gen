@@ -27,9 +27,18 @@ app = FastAPI(
 )
 
 # Add CORS middleware to allow frontend requests
+# NOTE: allow_origins=["*"] cannot be used with allow_credentials=True — browsers block it.
+# Use explicit origins instead. Add any new dev ports here if Vite picks a different one.
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # TODO(phase-10): Restrict to specific origins in production
+    allow_origins=[
+        "http://localhost:5173",
+        "http://localhost:5174",
+        "http://localhost:5175",
+        "http://localhost:5182",
+        "http://localhost:5183",
+        "http://localhost:5184",
+    ],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

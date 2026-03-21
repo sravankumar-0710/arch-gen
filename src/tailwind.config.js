@@ -1,36 +1,78 @@
 // filepath: src/tailwind.config.js
-// Purpose: Tailwind CSS configuration — extends default theme with ArchGen design tokens
+// Purpose: Tailwind CSS configuration — ArchGen design tokens, Linear-inspired dark blue theme
 
 /** @type {import('tailwindcss').Config} */
 export default {
   content: ['./index.html', './**/*.{js,jsx}'],
   theme: {
     extend: {
+      fontFamily: {
+        sans:    ['"Plus Jakarta Sans"', 'Inter', 'system-ui', 'sans-serif'],
+        mono:    ['"JetBrains Mono"', 'monospace'],
+      },
       colors: {
-        // ArchGen brand palette
-        brand: {
-          50: '#f0f4ff',
-          100: '#dce6ff',
-          200: '#b9ccff',
-          300: '#85a8ff',
-          400: '#4d7dff',
-          500: '#2558f5',
-          600: '#1540d6',
-          700: '#1030ad',
-          800: '#122b8c',
-          900: '#142870',
+        // Primary accent — electric indigo/violet
+        accent: {
+          50:  '#eef2ff',
+          100: '#e0e7ff',
+          200: '#c7d2fe',
+          300: '#a5b4fc',
+          400: '#818cf8',
+          500: '#6366f1',   // PRIMARY
+          600: '#4f46e5',
+          700: '#4338ca',
+          800: '#3730a3',
+          900: '#312e81',
         },
-        surface: {
-          DEFAULT: '#0f1117',
-          raised: '#171b26',
-          overlay: '#1e2335',
-          border: '#2a3048',
+        // Surfaces — very dark blue-tinted grays
+        ink: {
+          950: '#08080c',   // base bg
+          900: '#0d0d12',   // surface
+          800: '#13131a',   // elevated
+          700: '#1a1a24',   // overlay
+          600: '#22222f',   // hover
+          500: '#2e2e3e',   // border strong
+          400: '#3d3d52',   // border default
+          300: '#5a5a72',   // muted text
+          200: '#8b8ba8',   // secondary text
+          100: '#c4c4d4',   // primary text dim
+          50:  '#eeeef5',   // primary text
         },
       },
-      fontFamily: {
-        sans: ['Inter', 'system-ui', 'sans-serif'],
-        mono: ['JetBrains Mono', 'monospace'],
-        serif: ['DM Serif Display', 'Georgia', 'serif'],
+      boxShadow: {
+        'glow-accent': '0 0 20px rgba(99,102,241,0.35)',
+        'glow-sm':     '0 0 10px rgba(99,102,241,0.2)',
+        'card':        '0 1px 3px rgba(0,0,0,0.4), 0 1px 2px rgba(0,0,0,0.3)',
+        'modal':       '0 25px 60px rgba(0,0,0,0.7), 0 0 0 1px rgba(255,255,255,0.06)',
+      },
+      borderRadius: {
+        'xl':  '12px',
+        '2xl': '16px',
+        '3xl': '20px',
+      },
+      keyframes: {
+        fadeUp: {
+          '0%':   { opacity: '0', transform: 'translateY(12px)' },
+          '100%': { opacity: '1', transform: 'translateY(0)' },
+        },
+        fadeIn: {
+          '0%':   { opacity: '0' },
+          '100%': { opacity: '1' },
+        },
+        scaleIn: {
+          '0%':   { opacity: '0', transform: 'scale(0.97)' },
+          '100%': { opacity: '1', transform: 'scale(1)' },
+        },
+        shimmer: {
+          '0%':   { backgroundPosition: '-400px 0' },
+          '100%': { backgroundPosition: '400px 0' },
+        },
+      },
+      animation: {
+        'fadeUp':  'fadeUp 0.45s cubic-bezier(0.16,1,0.3,1) both',
+        'fadeIn':  'fadeIn 0.25s ease both',
+        'scaleIn': 'scaleIn 0.3s cubic-bezier(0.16,1,0.3,1) both',
+        'shimmer': 'shimmer 1.4s linear infinite',
       },
     },
   },
