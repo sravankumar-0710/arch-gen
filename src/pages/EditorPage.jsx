@@ -9,6 +9,7 @@ import RequirementsPanel from '../components/requirements/RequirementsPanel.jsx'
 import GeneratingState from '../components/layout-generator/GeneratingState.jsx'
 import LayoutSelector from '../components/layout-generator/LayoutSelector.jsx'
 import useLandStore from '../store/landStore.js'
+import useLayoutStore from '../store/layoutStore.js'
 import { useLayoutGenerator } from '../hooks/useLayoutGenerator.js'
 import * as projectService from '../services/projectService.js'
 
@@ -19,15 +20,6 @@ const STEPS = [
   { id: 'results',      label: 'Select Layout' },
 ]
 
-const DEFAULT_REQUIREMENTS = {
-  bedrooms:   2,
-  bathrooms:  1,
-  kitchen:    1,
-  livingRoom: 1,
-  diningRoom: 0,
-  balcony:    1,
-}
-
 export default function EditorPage() {
   const { projectId } = useParams()
   const navigate = useNavigate()
@@ -36,10 +28,14 @@ export default function EditorPage() {
   const [isSaving, setIsSaving] = useState(false)
   const [pageLoading, setPageLoading] = useState(true)
   const [error, setError] = useState(null)
-  const [requirements, setRequirements] = useState(DEFAULT_REQUIREMENTS)
 
   const { setPolygonPoints, setRoadSide, setNorthAngle, setUnit } = useLandStore()
-  const { layouts, isGenerating, generateError, generate } = useLayoutGenerator()
+
+  // Read layouts directly from the store — not from the hook return value
+  const layoutOptions = useLayoutStore((s) => s.layoutOptions)
+
+  // Hook only used for triggering generation and reading generating state
+  const { generate, isGenerating, generationError } = useLayoutGenerator()
 
   const stepIndex = STEPS.findIndex((s) => s.id === phase)
 
@@ -56,9 +52,6 @@ export default function EditorPage() {
           setNorthAngle(northAngle ?? 0)
           setUnit(unit || 'ft')
         }
-        if (project.requirements) {
-          setRequirements((prev) => ({ ...prev, ...project.requirements }))
-        }
       } catch (err) {
         setError(err.message)
       } finally {
@@ -67,6 +60,17 @@ export default function EditorPage() {
     }
     loadProject()
   }, [projectId, setPolygonPoints, setRoadSide, setNorthAngle, setUnit])
+
+  // Watch isGenerating: when it flips false while on 'generating' phase, advance
+  useEffect(() => {
+    if (!isGenerating && phase === 'generating') {
+      if (generationError) {
+        setPhase('requirements')
+      } else {
+        setPhase('results')
+      }
+    }
+  }, [isGenerating, generationError, phase])
 
   async function handleSaveLandData(landData) {
     if (!projectId) { setError('No project loaded'); return }
@@ -82,15 +86,16 @@ export default function EditorPage() {
     }
   }
 
-  async function handleGenerate() {
+  // FIXED: generate() reads from store — no args. Set phase first, then call.
+  function handleGenerate() {
     setPhase('generating')
-    await generate(requirements)
-    setPhase('results')
+    generate()
   }
 
   async function handleSaveLayout(layout) {
     setIsSaving(true)
     try {
+      await projectService.updateProject(projectId, { layout })
       navigate('/dashboard')
     } catch (err) {
       setError(err.message)
@@ -100,10 +105,8 @@ export default function EditorPage() {
   }
 
   return (
-    // Full viewport height, flex column, no overflow-hidden on outer shell
     <div className="min-h-screen bg-[#0a0a0c] flex flex-col font-[Inter,system-ui,sans-serif]">
 
-      {/* Top bar — sticky so it stays visible while scrolling */}
       <header className="sticky top-0 z-20 h-14 flex items-center justify-between px-6 border-b border-white/[0.05] bg-[#0f0f12] flex-shrink-0">
         <div className="flex items-center gap-4">
           <button
@@ -137,31 +140,24 @@ export default function EditorPage() {
         </div>
       </header>
 
-      {/* Error banner */}
-      {(error || generateError) && (
+      {(error || generationError) && (
         <div className="px-6 py-2.5 bg-[rgba(224,82,82,0.08)] border-b border-[rgba(224,82,82,0.15)] text-sm text-[#e05252] flex items-center gap-2 flex-shrink-0">
           <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
             <circle cx="7" cy="7" r="6" stroke="#e05252" strokeWidth="1.2" />
             <path d="M7 4v3.5M7 9.5v.5" stroke="#e05252" strokeWidth="1.4" strokeLinecap="round" />
           </svg>
-          {error || generateError}
-          <button
-            onClick={() => setError(null)}
-            className="ml-auto text-[#e05252] bg-transparent border-none cursor-pointer hover:text-[#ff7070]"
-          >
-            ✕
-          </button>
+          {error || generationError}
+          <button onClick={() => setError(null)} className="ml-auto text-[#e05252] bg-transparent border-none cursor-pointer hover:text-[#ff7070]">✕</button>
         </div>
       )}
 
-      {/* Scrollable content area */}
       <main className="flex-1 overflow-y-auto">
         {pageLoading ? (
           <div className="flex items-center justify-center h-64">
             <p className="text-[#9d9a94]">Loading project...</p>
           </div>
         ) : phase === 'land' ? (
-          <div className="p-6 bg-[#0a0a0c]">
+          <div className="p-6">
             <div className="w-full max-w-[1100px] mx-auto">
               <div className="bg-[#141418] rounded-2xl border border-white/[0.06] overflow-hidden">
                 <div className="h-px bg-gradient-to-r from-transparent via-[#d4a832] to-transparent opacity-40" />
@@ -175,15 +171,12 @@ export default function EditorPage() {
           <RequirementsPanel
             onBack={() => setPhase('land')}
             onGenerate={handleGenerate}
-            isLoading={isGenerating}
-            requirements={requirements}
-            setRequirements={setRequirements}
           />
         ) : phase === 'generating' ? (
           <GeneratingState />
         ) : phase === 'results' ? (
           <LayoutSelector
-            layouts={layouts}
+            layouts={layoutOptions}
             onSave={handleSaveLayout}
             isSaving={isSaving}
             onBack={() => setPhase('requirements')}

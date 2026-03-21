@@ -1,9 +1,8 @@
 // filepath: src/postcss.config.js
-// Purpose: PostCSS configuration — Tailwind v4 + autoprefixer
-
+// Purpose: PostCSS configuration — Tailwind v3 + autoprefixer
 export default {
   plugins: {
-    '@tailwindcss/postcss': {},
+    tailwindcss: {},
     autoprefixer: {},
   },
 }

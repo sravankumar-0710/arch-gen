@@ -10,15 +10,16 @@ import AdvancedModeForm from './AdvancedModeForm.jsx'
 import VastuOptions from './VastuOptions.jsx'
 import { validateRoomFit, validateDirectionConflicts } from '../../utils/validators.js'
 
-export default function RequirementsPanel({ onBack }) {
-  const mode  = useRequirementsStore((s) => s.mode)
-  const rooms = useRequirementsStore((s) => s.rooms)
+// FIXED: accepts onGenerate from EditorPage so phase transition is controlled there
+export default function RequirementsPanel({ onBack, onGenerate }) {
+  const mode          = useRequirementsStore((s) => s.mode)
+  const rooms         = useRequirementsStore((s) => s.rooms)
   const bedroomCount  = useRequirementsStore((s) => s.bedroomCount)
   const hasKitchen    = useRequirementsStore((s) => s.hasKitchen)
   const hasLivingRoom = useRequirementsStore((s) => s.hasLivingRoom)
   const hasDiningRoom = useRequirementsStore((s) => s.hasDiningRoom)
   const floors        = useRequirementsStore((s) => s.floors)
-  const setMode = useRequirementsStore((s) => s.setMode)
+  const setMode       = useRequirementsStore((s) => s.setMode)
 
   const polygonPoints = useLandStore((s) => s.polygonPoints)
   const dimensions    = useLandStore((s) => s.dimensions)
@@ -30,16 +31,8 @@ export default function RequirementsPanel({ onBack }) {
   const warnings = []
 
   const roomFitWarning = validateRoomFit({
-    mode,
-    bedroomCount,
-    hasKitchen,
-    hasLivingRoom,
-    hasDiningRoom,
-    floors,
-    rooms,
-    polygonPoints,
-    dimensions,
-    unit,
+    mode, bedroomCount, hasKitchen, hasLivingRoom,
+    hasDiningRoom, floors, rooms, polygonPoints, dimensions, unit,
   })
   if (roomFitWarning) warnings.push(roomFitWarning)
 
@@ -47,6 +40,11 @@ export default function RequirementsPanel({ onBack }) {
     const directionWarnings = validateDirectionConflicts(rooms)
     warnings.push(...directionWarnings)
   }
+
+  // FIXED: always coerce error to string — prevents [object Object] display
+  const errorMessage = generationError
+    ? (typeof generationError === 'string' ? generationError : JSON.stringify(generationError))
+    : null
 
   return (
     <div className="max-w-4xl mx-auto">
@@ -91,7 +89,7 @@ export default function RequirementsPanel({ onBack }) {
             <AdvancedModeForm validationWarnings={warnings} />
           )}
 
-          {/* Vastu options — shown in both modes */}
+          {/* Vastu options */}
           <div className="pt-2 border-t border-slate-100">
             <label className="block text-xs text-slate-400 uppercase tracking-wide font-semibold mb-3">
               Vastu Compliance
@@ -99,7 +97,7 @@ export default function RequirementsPanel({ onBack }) {
             <VastuOptions />
           </div>
 
-          {/* Warnings (basic mode — advanced mode shows inline) */}
+          {/* Warnings (basic mode only — advanced shows inline) */}
           {mode === 'basic' && warnings.length > 0 && (
             <div className="space-y-2">
               {warnings.map((warn, i) => (
@@ -114,10 +112,10 @@ export default function RequirementsPanel({ onBack }) {
             </div>
           )}
 
-          {/* Generation error */}
-          {generationError && (
+          {/* Generation error — FIXED: render errorMessage string not raw object */}
+          {errorMessage && (
             <div className="px-4 py-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700">
-              {generationError}
+              {errorMessage}
             </div>
           )}
 
@@ -130,7 +128,7 @@ export default function RequirementsPanel({ onBack }) {
               ← Back
             </button>
             <button
-              onClick={generate}
+              onClick={onGenerate}
               disabled={isGenerating}
               className={`flex-1 py-2.5 text-sm font-semibold rounded-lg border-none transition cursor-pointer ${
                 isGenerating

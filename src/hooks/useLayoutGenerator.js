@@ -8,24 +8,23 @@ import useRequirementsStore from '../store/requirementsStore.js'
 import { generateLayout } from '../services/generatorService.js'
 import { validatePolygon } from '../utils/geometry.js'
 
-// Named export — consistent with how hooks are imported across the codebase
 export function useLayoutGenerator() {
-  const setLayoutOptions = useLayoutStore((state) => state.setLayoutOptions)
-  const setIsGenerating = useLayoutStore((state) => state.setIsGenerating)
+  const setLayoutOptions  = useLayoutStore((state) => state.setLayoutOptions)
+  const setIsGenerating   = useLayoutStore((state) => state.setIsGenerating)
   const setGenerationError = useLayoutStore((state) => state.setGenerationError)
-  const isGenerating = useLayoutStore((state) => state.isGenerating)
-  const generationError = useLayoutStore((state) => state.generationError)
+  const isGenerating      = useLayoutStore((state) => state.isGenerating)
+  const generationError   = useLayoutStore((state) => state.generationError)
 
   const polygonPoints = useLandStore((state) => state.polygonPoints)
-  const unit = useLandStore((state) => state.unit)
-  const roadSide = useLandStore((state) => state.roadSide)
-  const northAngle = useLandStore((state) => state.northAngle)
+  const unit          = useLandStore((state) => state.unit)
+  const roadSide      = useLandStore((state) => state.roadSide)
+  const northAngle    = useLandStore((state) => state.northAngle)
 
-  const mode = useRequirementsStore((state) => state.mode)
-  const floors = useRequirementsStore((state) => state.floors)
+  const mode         = useRequirementsStore((state) => state.mode)
+  const floors       = useRequirementsStore((state) => state.floors)
   const vastuEnabled = useRequirementsStore((state) => state.vastuEnabled)
   const bedroomCount = useRequirementsStore((state) => state.bedroomCount)
-  const rooms = useRequirementsStore((state) => state.rooms)
+  const rooms        = useRequirementsStore((state) => state.rooms)
 
   const generate = async () => {
     // Validate polygon client-side before hitting the backend
@@ -38,8 +37,9 @@ export function useLayoutGenerator() {
     setIsGenerating(true)
     setGenerationError(null)
 
+    // FIXED: backend schema expects 'land_data' not 'land'
     const payload = {
-      land: {
+      land_data: {
         polygonPoints,
         unit,
         roadSide,
@@ -49,7 +49,6 @@ export function useLayoutGenerator() {
         mode,
         floors,
         vastuEnabled,
-        // Only include the relevant fields per mode
         bedroomCount: mode === 'basic' ? bedroomCount : undefined,
         rooms: mode === 'advanced' ? rooms : undefined,
       },
@@ -57,9 +56,11 @@ export function useLayoutGenerator() {
 
     try {
       const data = await generateLayout(payload)
-      setLayoutOptions(data.data.layouts)
+      setLayoutOptions(data.data?.layouts ?? [])
     } catch (err) {
-      setGenerationError(err.message)
+      // FIXED: always extract string message — never pass Error object to store
+      const message = err?.message || err?.response?.data?.message || 'Layout generation failed'
+      setGenerationError(message)
     } finally {
       setIsGenerating(false)
     }

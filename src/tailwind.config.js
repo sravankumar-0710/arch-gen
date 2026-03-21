@@ -3,7 +3,11 @@
 
 /** @type {import('tailwindcss').Config} */
 export default {
-  content: ['./index.html', './**/*.{js,jsx}'],
+  // FIXED: paths are relative to this file (src/), so index.html is one level up
+  content: [
+    '../index.html',
+    './**/*.{js,jsx}',
+  ],
   theme: {
     extend: {
       fontFamily: {
@@ -11,32 +15,30 @@ export default {
         mono:    ['"JetBrains Mono"', 'monospace'],
       },
       colors: {
-        // Primary accent — electric indigo/violet
         accent: {
           50:  '#eef2ff',
           100: '#e0e7ff',
           200: '#c7d2fe',
           300: '#a5b4fc',
           400: '#818cf8',
-          500: '#6366f1',   // PRIMARY
+          500: '#6366f1',
           600: '#4f46e5',
           700: '#4338ca',
           800: '#3730a3',
           900: '#312e81',
         },
-        // Surfaces — very dark blue-tinted grays
         ink: {
-          950: '#08080c',   // base bg
-          900: '#0d0d12',   // surface
-          800: '#13131a',   // elevated
-          700: '#1a1a24',   // overlay
-          600: '#22222f',   // hover
-          500: '#2e2e3e',   // border strong
-          400: '#3d3d52',   // border default
-          300: '#5a5a72',   // muted text
-          200: '#8b8ba8',   // secondary text
-          100: '#c4c4d4',   // primary text dim
-          50:  '#eeeef5',   // primary text
+          950: '#08080c',
+          900: '#0d0d12',
+          800: '#13131a',
+          700: '#1a1a24',
+          600: '#22222f',
+          500: '#2e2e3e',
+          400: '#3d3d52',
+          300: '#5a5a72',
+          200: '#8b8ba8',
+          100: '#c4c4d4',
+          50:  '#eeeef5',
         },
       },
       boxShadow: {
