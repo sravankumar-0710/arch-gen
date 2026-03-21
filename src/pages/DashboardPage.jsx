@@ -1,5 +1,5 @@
 // filepath: src/pages/DashboardPage.jsx
-// Purpose: Dashboard page — project grid with architectural dark UI
+// Purpose: Dashboard page — project grid with create, delete, and search.
 
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
@@ -10,6 +10,7 @@ export default function DashboardPage() {
   const navigate = useNavigate()
   const { user, logout } = useAuth()
   const { projects = [], isLoading, error, fetchProjects, removeProject, createNewProject } = useProject()
+
   const [showCreate, setShowCreate] = useState(false)
   const [newProjectName, setNewProjectName] = useState('')
   const [creatingProject, setCreatingProject] = useState(false)
@@ -20,23 +21,25 @@ export default function DashboardPage() {
     fetchProjects?.()
   }, [fetchProjects])
 
-  const filteredProjects = projects.filter(p =>
+  const filteredProjects = projects.filter((p) =>
     p.name?.toLowerCase().includes(searchQuery.toLowerCase())
   )
 
-  const handleCreateProject = async (e) => {
-    e.preventDefault()
+  const handleCreateProject = async () => {
     if (!newProjectName.trim()) return
-
     setCreatingProject(true)
     try {
-      const project = await createNewProject(newProjectName.trim())
+      await createNewProject(newProjectName.trim())
       setNewProjectName('')
       setShowCreate(false)
       await fetchProjects?.()
     } finally {
       setCreatingProject(false)
     }
+  }
+
+  const handleCreateKeyDown = (e) => {
+    if (e.key === 'Enter') handleCreateProject()
   }
 
   const handleDeleteProject = async (id) => {
@@ -50,250 +53,104 @@ export default function DashboardPage() {
   }
 
   return (
-    <div style={{
-      backgroundColor: '#0a0a0c',
-      height: '100vh',
-      display: 'flex',
-      flexDirection: 'column',
-      fontFamily: 'Inter, system-ui, sans-serif',
-      color: '#f0ede8'
-    }}>
+    <div className="h-screen bg-[#0a0a0c] flex flex-col font-[Inter,system-ui,sans-serif] text-[#f0ede8]">
+
       {/* Header */}
-      <header style={{
-        height: '56px',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        paddingLeft: '24px',
-        paddingRight: '24px',
-        borderBottom: '1px solid rgba(255,255,255,0.05)',
-        backgroundColor: '#0f0f12',
-        flexShrink: 0
-      }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '24px' }}>
-          {/* Logo */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-            <div style={{ width: '28px', height: '28px' }}>
-              <svg viewBox="0 0 36 36" fill="none" style={{ width: '100%', height: '100%' }}>
-                <rect x="4" y="4" width="28" height="28" stroke="#d4a832" strokeWidth="1.5" fill="none"/>
-                <rect x="4" y="4" width="14" height="14" stroke="#d4a832" strokeWidth="1" fill="rgba(212,168,50,0.08)"/>
-                <rect x="18" y="4" width="14" height="28" stroke="#d4a832" strokeWidth="1" fill="rgba(212,168,50,0.04)"/>
-                <rect x="4" y="18" width="14" height="14" stroke="#d4a832" strokeWidth="1" fill="rgba(212,168,50,0.04)"/>
-              </svg>
-            </div>
-            <span style={{
-              fontFamily: "'DM Serif Display', Georgia, serif",
-              fontSize: '16px',
-              fontWeight: '400',
-              color: '#f0ede8'
-            }}>
-              ArchGen<span style={{ color: '#d4a832', fontStyle: 'italic' }}> AI</span>
-            </span>
+      <header className="h-14 flex items-center justify-between px-6 border-b border-white/[0.05] bg-[#0f0f12] flex-shrink-0">
+        <div className="flex items-center gap-2.5">
+          <div className="w-7 h-7">
+            <svg viewBox="0 0 36 36" fill="none" className="w-full h-full">
+              <rect x="4" y="4" width="28" height="28" stroke="#d4a832" strokeWidth="1.5" fill="none" />
+              <rect x="4" y="4" width="14" height="14" stroke="#d4a832" strokeWidth="1" fill="rgba(212,168,50,0.08)" />
+              <rect x="18" y="4" width="14" height="28" stroke="#d4a832" strokeWidth="1" fill="rgba(212,168,50,0.04)" />
+              <rect x="4" y="18" width="14" height="14" stroke="#d4a832" strokeWidth="1" fill="rgba(212,168,50,0.04)" />
+            </svg>
           </div>
+          <span className="font-serif text-base font-normal text-[#f0ede8]">
+            ArchGen<span className="text-[#d4a832] italic"> AI</span>
+          </span>
         </div>
 
-        {/* User menu */}
-        <div style={{
-          display: 'flex',
-          alignItems: 'center',
-          gap: '16px',
-          fontSize: '13px',
-          color: '#9d9a94'
-        }}>
+        <div className="flex items-center gap-4 text-sm text-[#9d9a94]">
           <span>{user?.email}</span>
           <button
-            onClick={() => logout()}
-            style={{
-              backgroundColor: 'transparent',
-              border: 'none',
-              color: '#5a5855',
-              cursor: 'pointer',
-              fontSize: '13px',
-              transition: 'color 0.2s ease'
-            }}
-            onMouseEnter={(e) => e.target.style.color = '#d4a832'}
-            onMouseLeave={(e) => e.target.style.color = '#5a5855'}
+            onClick={logout}
+            className="bg-transparent border-none text-[#5a5855] cursor-pointer text-sm transition-colors hover:text-[#d4a832]"
           >
             Sign out
           </button>
         </div>
       </header>
 
-      {/* Main content */}
-      <main style={{
-        flex: 1,
-        overflow: 'auto',
-        padding: '32px 24px'
-      }}>
+      {/* Main */}
+      <main className="flex-1 overflow-auto p-8">
+
         {/* Page header */}
-        <div style={{
-          marginBottom: '32px',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between'
-        }}>
+        <div className="mb-8 flex items-center justify-between">
           <div>
-            <h1 style={{
-              fontFamily: "'DM Serif Display', Georgia, serif",
-              fontSize: '32px',
-              fontWeight: '400',
-              margin: '0 0 8px 0',
-              color: '#f0ede8'
-            }}>Projects</h1>
-            <p style={{
-              fontSize: '14px',
-              color: '#5a5855',
-              margin: 0
-            }}>Manage your architectural floor plans</p>
+            <h1 className="font-serif text-3xl font-normal text-[#f0ede8] mb-2">Projects</h1>
+            <p className="text-sm text-[#5a5855]">Manage your architectural floor plans</p>
           </div>
           <button
             onClick={() => setShowCreate(true)}
-            style={{
-              backgroundColor: '#d4a832',
-              color: '#0a0a0c',
-              border: 'none',
-              borderRadius: '8px',
-              padding: '10px 20px',
-              fontSize: '14px',
-              fontWeight: '600',
-              cursor: 'pointer',
-              transition: 'all 0.2s ease'
-            }}
-            onMouseEnter={(e) => {
-              e.target.style.backgroundColor = '#f0c84a'
-              e.target.style.boxShadow = '0 0 24px rgba(212,168,50,0.35)'
-            }}
-            onMouseLeave={(e) => {
-              e.target.style.backgroundColor = '#d4a832'
-              e.target.style.boxShadow = 'none'
-            }}
+            className="bg-[#d4a832] text-[#0a0a0c] border-none rounded-lg px-5 py-2.5 text-sm font-semibold cursor-pointer transition-all hover:bg-[#f0c84a] hover:shadow-[0_0_24px_rgba(212,168,50,0.35)]"
           >
             + New Project
           </button>
         </div>
 
         {/* Search */}
-        <div style={{ marginBottom: '24px' }}>
+        <div className="mb-6">
           <input
             type="text"
             placeholder="Search projects..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            style={{
-              width: '100%',
-              maxWidth: '300px',
-              backgroundColor: '#141418',
-              border: '1px solid rgba(255,255,255,0.06)',
-              borderRadius: '8px',
-              padding: '10px 16px',
-              fontSize: '14px',
-              color: '#f0ede8',
-              boxSizing: 'border-box',
-              outline: 'none',
-              transition: 'all 0.2s ease'
-            }}
-            onFocus={(e) => {
-              e.target.style.borderColor = '#d4a832'
-              e.target.style.boxShadow = '0 0 0 3px rgba(212,168,50,0.1)'
-            }}
-            onBlur={(e) => {
-              e.target.style.borderColor = 'rgba(255,255,255,0.06)'
-              e.target.style.boxShadow = 'none'
-            }}
+            className="w-full max-w-xs bg-[#141418] border border-white/[0.06] rounded-lg px-4 py-2.5 text-sm text-[#f0ede8] placeholder:text-[#5a5855] outline-none transition-all focus:border-[#d4a832] focus:shadow-[0_0_0_3px_rgba(212,168,50,0.1)]"
           />
         </div>
 
-        {/* Projects grid */}
+        {/* Loading / error / empty / grid */}
         {isLoading ? (
-          <div style={{ textAlign: 'center', padding: '48px 24px', color: '#5a5855' }}>
-            Loading projects...
-          </div>
+          <div className="text-center py-12 text-[#5a5855]">Loading projects...</div>
         ) : error ? (
-          <div style={{
-            backgroundColor: 'rgba(224,82,82,0.08)',
-            border: '1px solid rgba(224,82,82,0.2)',
-            borderRadius: '8px',
-            padding: '16px',
-            color: '#e05252',
-            marginBottom: '24px'
-          }}>
+          <div className="bg-[rgba(224,82,82,0.08)] border border-[rgba(224,82,82,0.2)] rounded-lg p-4 text-[#e05252] mb-6">
             {error}
           </div>
         ) : filteredProjects.length === 0 ? (
-          <div style={{
-            textAlign: 'center',
-            padding: '48px 24px',
-            color: '#5a5855'
-          }}>
-            <p style={{ fontSize: '16px', marginBottom: '8px' }}>No projects yet</p>
-            <p style={{ fontSize: '14px' }}>Create a new project to get started</p>
+          <div className="text-center py-12 text-[#5a5855]">
+            <p className="text-base mb-2">No projects yet</p>
+            <p className="text-sm">Create a new project to get started</p>
           </div>
         ) : (
-          <div style={{
-            display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))',
-            gap: '16px'
-          }}>
+          <div className="grid gap-4" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))' }}>
             {filteredProjects.map((project) => (
               <div
                 key={project.id}
                 onClick={() => navigate(`/editor/${project.id}`)}
-                style={{
-                  backgroundColor: '#141418',
-                  border: '1px solid rgba(255,255,255,0.06)',
-                  borderRadius: '12px',
-                  overflow: 'hidden',
-                  cursor: 'pointer',
-                  transition: 'all 0.2s ease'
-                }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.borderColor = '#d4a832'
-                  e.currentTarget.style.boxShadow = '0 0 24px rgba(212,168,50,0.15)'
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.borderColor = 'rgba(255,255,255,0.06)'
-                  e.currentTarget.style.boxShadow = 'none'
-                }}
+                className="bg-[#141418] border border-white/[0.06] rounded-xl overflow-hidden cursor-pointer transition-all hover:border-[#d4a832] hover:shadow-[0_0_24px_rgba(212,168,50,0.15)]"
               >
-                {/* Preview area */}
-                <div style={{
-                  aspectRatio: '4 / 3',
-                  backgroundColor: '#0f0f12',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  position: 'relative',
-                  backgroundImage: 'linear-gradient(rgba(255,255,255,0.015) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.015) 1px, transparent 1px)',
-                  backgroundSize: '20px 20px',
-                  padding: '16px'
-                }}>
-                  <svg viewBox="0 0 100 80" fill="none" style={{ width: '100%', height: '100%', opacity: 0.6 }}>
-                    <rect x="4" y="4" width="92" height="72" stroke="#d4a832" strokeWidth="1.5" fill="none"/>
-                    <rect x="4" y="4" width="45" height="35" stroke="#d4a832" strokeWidth="0.8" fill="rgba(212,168,50,0.04)"/>
-                    <rect x="49" y="4" width="47" height="35" stroke="#d4a832" strokeWidth="0.8" fill="rgba(212,168,50,0.04)"/>
-                    <rect x="4" y="39" width="92" height="37" stroke="#d4a832" strokeWidth="0.8" fill="rgba(212,168,50,0.03)"/>
+                {/* Thumbnail */}
+                <div
+                  className="bg-[#0f0f12] flex items-center justify-center p-4"
+                  style={{
+                    aspectRatio: '4/3',
+                    backgroundImage: 'linear-gradient(rgba(255,255,255,0.015) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.015) 1px, transparent 1px)',
+                    backgroundSize: '20px 20px',
+                  }}
+                >
+                  <svg viewBox="0 0 100 80" fill="none" className="w-full h-full opacity-60">
+                    <rect x="4" y="4" width="92" height="72" stroke="#d4a832" strokeWidth="1.5" fill="none" />
+                    <rect x="4" y="4" width="45" height="35" stroke="#d4a832" strokeWidth="0.8" fill="rgba(212,168,50,0.04)" />
+                    <rect x="49" y="4" width="47" height="35" stroke="#d4a832" strokeWidth="0.8" fill="rgba(212,168,50,0.04)" />
+                    <rect x="4" y="39" width="92" height="37" stroke="#d4a832" strokeWidth="0.8" fill="rgba(212,168,50,0.03)" />
                   </svg>
                 </div>
 
-                {/* Project info */}
-                <div style={{
-                  padding: '16px',
-                  borderTop: '1px solid rgba(255,255,255,0.04)'
-                }}>
-                  <h3 style={{
-                    fontSize: '14px',
-                    fontWeight: '500',
-                    color: '#f0ede8',
-                    margin: '0 0 6px 0',
-                    wordBreak: 'break-word'
-                  }}>
-                    {project.name}
-                  </h3>
-                  <p style={{
-                    fontSize: '12px',
-                    color: '#5a5855',
-                    margin: 0
-                  }}>
+                {/* Info */}
+                <div className="p-4 border-t border-white/[0.04]">
+                  <h3 className="text-sm font-medium text-[#f0ede8] mb-1.5 break-words">{project.name}</h3>
+                  <p className="text-xs text-[#5a5855] mb-3">
                     {new Date(project.updated_at || project.created_at).toLocaleDateString()}
                   </p>
                   <button
@@ -302,27 +159,7 @@ export default function DashboardPage() {
                       handleDeleteProject(project.id)
                     }}
                     disabled={deletingId === project.id}
-                    style={{
-                      marginTop: '10px',
-                      width: '100%',
-                      backgroundColor: 'transparent',
-                      border: '1px solid rgba(224,82,82,0.2)',
-                      color: '#e05252',
-                      borderRadius: '6px',
-                      padding: '6px 12px',
-                      fontSize: '12px',
-                      cursor: 'pointer',
-                      transition: 'all 0.2s ease',
-                      opacity: deletingId === project.id ? 0.5 : 1
-                    }}
-                    onMouseEnter={(e) => {
-                      if (deletingId !== project.id) {
-                        e.target.style.backgroundColor = 'rgba(224,82,82,0.08)'
-                      }
-                    }}
-                    onMouseLeave={(e) => {
-                      e.target.style.backgroundColor = 'transparent'
-                    }}
+                    className="w-full bg-transparent border border-[rgba(224,82,82,0.2)] text-[#e05252] rounded-md px-3 py-1.5 text-xs cursor-pointer transition-all hover:bg-[rgba(224,82,82,0.08)] disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     {deletingId === project.id ? 'Deleting...' : 'Delete'}
                   </button>
@@ -335,120 +172,36 @@ export default function DashboardPage() {
 
       {/* Create project modal */}
       {showCreate && (
-        <div style={{
-          position: 'fixed',
-          top: 0,
-          left: 0,
-          right: 0,
-          bottom: 0,
-          backgroundColor: 'rgba(0,0,0,0.5)',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          zIndex: 1000
-        }}>
-          <div style={{
-            backgroundColor: '#141418',
-            borderRadius: '12px',
-            border: '1px solid rgba(255,255,255,0.06)',
-            padding: '32px',
-            width: '100%',
-            maxWidth: '400px',
-            boxShadow: '0 0 0 1px rgba(255,255,255,0.08), 0 25px 50px rgba(0,0,0,0.5)'
-          }}>
-            <h2 style={{
-              fontFamily: "'DM Serif Display', Georgia, serif",
-              fontSize: '20px',
-              fontWeight: '400',
-              margin: '0 0 16px 0',
-              color: '#f0ede8'
-            }}>Create New Project</h2>
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <div className="bg-[#141418] rounded-xl border border-white/[0.06] p-8 w-full max-w-sm shadow-[0_0_0_1px_rgba(255,255,255,0.08),0_25px_50px_rgba(0,0,0,0.5)]">
+            <h2 className="font-serif text-xl font-normal text-[#f0ede8] mb-4">Create New Project</h2>
 
-            <form onSubmit={handleCreateProject}>
-              <input
-                type="text"
-                placeholder="Project name"
-                value={newProjectName}
-                onChange={(e) => setNewProjectName(e.target.value)}
+            <input
+              type="text"
+              placeholder="Project name"
+              value={newProjectName}
+              onChange={(e) => setNewProjectName(e.target.value)}
+              onKeyDown={handleCreateKeyDown}
+              disabled={creatingProject}
+              className="w-full bg-[#0f0f12] border border-white/[0.07] rounded-lg px-4 py-3 text-sm text-[#f0ede8] placeholder:text-[#3a3835] outline-none transition-all focus:border-[#d4a832] focus:shadow-[0_0_0_3px_rgba(212,168,50,0.1)] mb-4 disabled:opacity-50"
+            />
+
+            <div className="flex gap-3">
+              <button
+                onClick={() => setShowCreate(false)}
                 disabled={creatingProject}
-                style={{
-                  width: '100%',
-                  backgroundColor: '#0f0f12',
-                  border: '1px solid rgba(255,255,255,0.07)',
-                  borderRadius: '8px',
-                  padding: '12px 16px',
-                  fontSize: '14px',
-                  color: '#f0ede8',
-                  boxSizing: 'border-box',
-                  marginBottom: '16px',
-                  outline: 'none',
-                  transition: 'all 0.2s ease',
-                  opacity: creatingProject ? 0.5 : 1
-                }}
-                onFocus={(e) => {
-                  e.target.style.borderColor = '#d4a832'
-                  e.target.style.boxShadow = '0 0 0 3px rgba(212,168,50,0.1)'
-                }}
-                onBlur={(e) => {
-                  e.target.style.borderColor = 'rgba(255,255,255,0.07)'
-                  e.target.style.boxShadow = 'none'
-                }}
-              />
-
-              <div style={{ display: 'flex', gap: '12px' }}>
-                <button
-                  type="button"
-                  onClick={() => setShowCreate(false)}
-                  disabled={creatingProject}
-                  style={{
-                    flex: 1,
-                    backgroundColor: 'transparent',
-                    border: '1px solid rgba(255,255,255,0.07)',
-                    color: '#5a5855',
-                    borderRadius: '8px',
-                    padding: '10px 16px',
-                    fontSize: '14px',
-                    fontWeight: '600',
-                    cursor: 'pointer',
-                    transition: 'all 0.2s ease',
-                    opacity: creatingProject ? 0.5 : 1
-                  }}
-                  onMouseEnter={(e) => e.target.style.color = '#9d9a94'}
-                  onMouseLeave={(e) => e.target.style.color = '#5a5855'}
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  disabled={!newProjectName.trim() || creatingProject}
-                  style={{
-                    flex: 1,
-                    backgroundColor: '#d4a832',
-                    border: 'none',
-                    color: '#0a0a0c',
-                    borderRadius: '8px',
-                    padding: '10px 16px',
-                    fontSize: '14px',
-                    fontWeight: '600',
-                    cursor: creatingProject ? 'wait' : 'pointer',
-                    transition: 'all 0.2s ease',
-                    opacity: !newProjectName.trim() || creatingProject ? 0.5 : 1
-                  }}
-                  onMouseEnter={(e) => {
-                    if (newProjectName.trim() && !creatingProject) {
-                      e.target.style.backgroundColor = '#f0c84a'
-                      e.target.style.boxShadow = '0 0 24px rgba(212,168,50,0.35)'
-                    }
-                  }}
-                  onMouseLeave={(e) => {
-                    e.target.style.backgroundColor = '#d4a832'
-                    e.target.style.boxShadow = 'none'
-                  }}
-                >
-                  {creatingProject ? 'Creating...' : 'Create'}
-                </button>
-              </div>
-            </form>
+                className="flex-1 bg-transparent border border-white/[0.07] text-[#5a5855] rounded-lg px-4 py-2.5 text-sm font-semibold cursor-pointer transition-colors hover:text-[#9d9a94] disabled:opacity-50"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleCreateProject}
+                disabled={!newProjectName.trim() || creatingProject}
+                className="flex-1 bg-[#d4a832] border-none text-[#0a0a0c] rounded-lg px-4 py-2.5 text-sm font-semibold cursor-pointer transition-all hover:bg-[#f0c84a] hover:shadow-[0_0_24px_rgba(212,168,50,0.35)] disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {creatingProject ? 'Creating...' : 'Create'}
+              </button>
+            </div>
           </div>
         </div>
       )}

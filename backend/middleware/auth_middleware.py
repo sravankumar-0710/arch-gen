@@ -17,19 +17,20 @@ async def get_current_user(
     Raises HTTPException if token is invalid or expired.
 
     Returns:
-        Decoded token payload with user_id key
+        Decoded token payload with user_id as int
     """
     token = credentials.credentials
     try:
         payload = decode_token(token)
-        user_id = payload.get("sub")
-        if not user_id:
+        user_id_str = payload.get("sub")
+        if not user_id_str:
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail="Invalid token"
             )
-        return {"user_id": user_id}
-    except JWTError:
+        # JWT encodes user_id as str(id) — cast back to int for SQLAlchemy queries
+        return {"user_id": int(user_id_str)}
+    except (JWTError, ValueError):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid or expired token"

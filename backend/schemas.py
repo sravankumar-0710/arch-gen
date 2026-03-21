@@ -6,11 +6,15 @@ from datetime import datetime
 from typing import Optional
 
 
+# ─────────────────────────────────────────────
 # Auth Schemas
+# ─────────────────────────────────────────────
+
 class UserRegisterRequest(BaseModel):
     """Request body for user registration."""
     email: EmailStr
-    password: str = Field(..., min_length=6)
+    # min_length=8 matches frontend validators.js validatePassword rule
+    password: str = Field(..., min_length=8)
 
 
 class UserLoginRequest(BaseModel):
@@ -35,7 +39,10 @@ class TokenResponse(BaseModel):
     token_type: str = "bearer"
 
 
+# ─────────────────────────────────────────────
 # Project Schemas
+# ─────────────────────────────────────────────
+
 class ProjectCreateRequest(BaseModel):
     """Request body for creating a new project."""
     name: str = Field(..., min_length=1, max_length=255)
@@ -67,15 +74,18 @@ class ProjectResponse(BaseModel):
         from_attributes = True
 
 
+# ─────────────────────────────────────────────
 # Generator Schemas
+# ─────────────────────────────────────────────
+
 class GenerateLayoutRequest(BaseModel):
     """Request body for layout generation."""
-    land_data: dict  # { polygonPoints, unit, roadSide, northAngle, dimensions }
-    requirements: dict  # { mode, rooms, vastuEnabled, floors }
+    land_data: dict       # { polygonPoints, unit, roadSide, northAngle, dimensions }
+    requirements: dict    # { mode, rooms, vastuEnabled, floors }
 
 
 class LayoutOption(BaseModel):
-    """A single layout option with rooms and walls."""
+    """A single generated layout option."""
     id: int
     rooms: list[dict]
     walls: list[dict]
@@ -90,7 +100,10 @@ class GenerateLayoutResponse(BaseModel):
     warnings: Optional[list[str]] = None
 
 
+# ─────────────────────────────────────────────
 # Generic Response Envelope
+# ─────────────────────────────────────────────
+
 class ApiResponse(BaseModel):
     """Standard response envelope for all API endpoints."""
     success: bool

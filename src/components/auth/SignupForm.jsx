@@ -1,5 +1,5 @@
 // filepath: src/components/auth/SignupForm.jsx
-// Purpose: Signup form — email/password/confirm inputs, uses validators.js, same dark theme as LoginForm.
+// Purpose: Signup form — email/password/confirm inputs, validation, submit handler.
 
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
@@ -13,8 +13,7 @@ export default function SignupForm({ onSuccess }) {
   const [confirmPassword, setConfirmPassword] = useState('')
   const [fieldErrors, setFieldErrors] = useState({})
 
-  const handleSubmit = async (e) => {
-    e.preventDefault()
+  const handleSubmit = async () => {
     clearError()
 
     const errors = {}
@@ -22,7 +21,6 @@ export default function SignupForm({ onSuccess }) {
     const passErr = validatePassword(password)
     if (emailErr) errors.email = emailErr
     if (passErr) errors.password = passErr
-    // Confirm password uses same rule — must match and meet minimum
     if (password !== confirmPassword) errors.confirmPassword = 'Passwords do not match.'
     if (Object.keys(errors).length > 0) {
       setFieldErrors(errors)
@@ -38,8 +36,12 @@ export default function SignupForm({ onSuccess }) {
     }
   }
 
+  const handleKeyDown = (e) => {
+    if (e.key === 'Enter') handleSubmit()
+  }
+
   return (
-    <form onSubmit={handleSubmit} className="p-8">
+    <div className="p-8">
       {/* API error */}
       {error && (
         <div className="mb-6 px-4 py-3 rounded-xl bg-[rgba(224,82,82,0.08)] border border-[rgba(224,82,82,0.2)] text-[#e05252] text-sm flex items-start gap-3">
@@ -53,15 +55,15 @@ export default function SignupForm({ onSuccess }) {
 
       {/* Email */}
       <div className="mb-5">
-        <label htmlFor="email" className="block text-[10px] font-medium tracking-[0.15em] uppercase text-[#5a5855] mb-2">
+        <label htmlFor="signup-email" className="block text-[10px] font-medium tracking-[0.15em] uppercase text-[#5a5855] mb-2">
           Email Address
         </label>
         <input
-          id="email"
+          id="signup-email"
           type="email"
-          required
           value={email}
           onChange={(e) => setEmail(e.target.value)}
+          onKeyDown={handleKeyDown}
           placeholder="you@example.com"
           disabled={isLoading}
           className="w-full bg-[#0f0f12] border border-white/[0.07] rounded-xl px-4 py-3 text-sm text-[#f0ede8] placeholder:text-[#3a3835] outline-none transition-all focus:border-[#d4a832] focus:shadow-[0_0_0_3px_rgba(212,168,50,0.1)] disabled:opacity-50 disabled:cursor-not-allowed"
@@ -73,15 +75,15 @@ export default function SignupForm({ onSuccess }) {
 
       {/* Password */}
       <div className="mb-5">
-        <label htmlFor="password" className="block text-[10px] font-medium tracking-[0.15em] uppercase text-[#5a5855] mb-2">
+        <label htmlFor="signup-password" className="block text-[10px] font-medium tracking-[0.15em] uppercase text-[#5a5855] mb-2">
           Password
         </label>
         <input
-          id="password"
+          id="signup-password"
           type="password"
-          required
           value={password}
           onChange={(e) => setPassword(e.target.value)}
+          onKeyDown={handleKeyDown}
           placeholder="••••••••"
           disabled={isLoading}
           className="w-full bg-[#0f0f12] border border-white/[0.07] rounded-xl px-4 py-3 text-sm text-[#f0ede8] placeholder:text-[#3a3835] outline-none transition-all focus:border-[#d4a832] focus:shadow-[0_0_0_3px_rgba(212,168,50,0.1)] disabled:opacity-50 disabled:cursor-not-allowed"
@@ -93,15 +95,15 @@ export default function SignupForm({ onSuccess }) {
 
       {/* Confirm password */}
       <div className="mb-6">
-        <label htmlFor="confirmPassword" className="block text-[10px] font-medium tracking-[0.15em] uppercase text-[#5a5855] mb-2">
+        <label htmlFor="signup-confirm" className="block text-[10px] font-medium tracking-[0.15em] uppercase text-[#5a5855] mb-2">
           Confirm Password
         </label>
         <input
-          id="confirmPassword"
+          id="signup-confirm"
           type="password"
-          required
           value={confirmPassword}
           onChange={(e) => setConfirmPassword(e.target.value)}
+          onKeyDown={handleKeyDown}
           placeholder="••••••••"
           disabled={isLoading}
           className="w-full bg-[#0f0f12] border border-white/[0.07] rounded-xl px-4 py-3 text-sm text-[#f0ede8] placeholder:text-[#3a3835] outline-none transition-all focus:border-[#d4a832] focus:shadow-[0_0_0_3px_rgba(212,168,50,0.1)] disabled:opacity-50 disabled:cursor-not-allowed"
@@ -113,7 +115,7 @@ export default function SignupForm({ onSuccess }) {
 
       {/* Submit */}
       <button
-        type="submit"
+        onClick={handleSubmit}
         disabled={isLoading}
         className="w-full flex items-center justify-center gap-2 px-6 py-3 text-sm font-semibold rounded-xl border-none transition-all bg-[#d4a832] text-[#0a0a0c] cursor-pointer hover:bg-[#f0c84a] hover:shadow-[0_0_24px_rgba(212,168,50,0.35)] active:scale-[0.98] disabled:bg-[#8a6a1a] disabled:text-[#5a4a15] disabled:cursor-not-allowed disabled:shadow-none"
       >
@@ -130,13 +132,10 @@ export default function SignupForm({ onSuccess }) {
       {/* Login link */}
       <div className="mt-6 pt-6 border-t border-white/[0.04] text-center text-sm text-[#5a5855]">
         Already have an account?{' '}
-        <Link
-          to="/login"
-          className="font-medium text-[#d4a832] no-underline transition-colors hover:text-[#f0c84a]"
-        >
+        <Link to="/login" className="font-medium text-[#d4a832] no-underline transition-colors hover:text-[#f0c84a]">
           Sign in
         </Link>
       </div>
-    </form>
+    </div>
   )
 }
