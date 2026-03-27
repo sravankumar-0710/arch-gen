@@ -1,21 +1,21 @@
 // filepath: src/store/requirementsStore.js
-// Purpose: Global state for room and design requirements — mode, rooms, Vastu, floors.
+// Purpose: Global state for room and design requirements — mode, rooms, Vastu, floors, custom AI prompt.
 
 import { create } from 'zustand'
 
 // Default room shape — all fields required, use null for unset constraints
 const DEFAULT_ROOM = {
   id: null,
-  type: 'bedroom',          // 'bedroom' | 'kitchen' | 'bathroom' | 'living' | 'dining' | 'balcony' | 'staircase' | 'other'
-  preferredDirection: 'any', // 'N' | 'S' | 'E' | 'W' | 'NE' | 'NW' | 'SE' | 'SW' | 'any'
-  minAreaSqft: null,        // Override minimum area; null = use rule defaults
+  type: 'bedroom',
+  preferredDirection: 'any',
+  minAreaSqft: null,
   attachedBathroom: false,
   hasBalcony: false,
   balconyExtraFt: 0,
 }
 
 const useRequirementsStore = create((set) => ({
-  // 'basic' | 'advanced'
+  // 'basic' | 'advanced' | 'prompt'
   mode: 'basic',
   floors: 1,
   vastuEnabled: true,
@@ -29,6 +29,9 @@ const useRequirementsStore = create((set) => ({
   // Advanced mode room list
   rooms: [],
 
+  // AI Prompt mode — free-text description sent to Gemini alongside form data
+  customPrompt: '',
+
   setMode: (mode) => set({ mode }),
   setFloors: (floors) => set({ floors }),
   setVastuEnabled: (enabled) => set({ vastuEnabled: enabled }),
@@ -36,6 +39,7 @@ const useRequirementsStore = create((set) => ({
   setHasLivingRoom: (val) => set({ hasLivingRoom: val }),
   setHasDiningRoom: (val) => set({ hasDiningRoom: val }),
   setHasKitchen: (val) => set({ hasKitchen: val }),
+  setCustomPrompt: (prompt) => set({ customPrompt: prompt }),
 
   addRoom: (room) =>
     set((state) => ({
@@ -60,6 +64,7 @@ const useRequirementsStore = create((set) => ({
       hasDiningRoom: true,
       hasKitchen: true,
       rooms: [],
+      customPrompt: '',
     }),
 }))
 

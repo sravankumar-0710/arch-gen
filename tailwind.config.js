@@ -5,8 +5,8 @@
 export default {
   // FIXED: paths are relative to this file (src/), so index.html is one level up
   content: [
-  './index.html',
-  './**/*.{js,jsx}',
+  './src/index.html',
+  './src/**/*.{js,jsx}',
 ],
   theme: {
     extend: {

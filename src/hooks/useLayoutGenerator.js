@@ -1,70 +1,90 @@
 // filepath: src/hooks/useLayoutGenerator.js
-// Purpose: Custom hook that orchestrates layout generation — validates inputs, calls the API,
-// and updates the layout store with results.
+// Purpose: Orchestrates layout generation — reads stores, builds payload, calls service.
+// Writes results into layoutStore so EditorPage and LayoutSelector can read them.
 
-import useLayoutStore from '../store/layoutStore.js'
+import { useState, useCallback } from 'react'
 import useLandStore from '../store/landStore.js'
 import useRequirementsStore from '../store/requirementsStore.js'
+import useLayoutStore from '../store/layoutStore.js'
 import { generateLayout } from '../services/generatorService.js'
-import { validatePolygon } from '../utils/geometry.js'
 
-export function useLayoutGenerator() {
-  const setLayoutOptions  = useLayoutStore((state) => state.setLayoutOptions)
-  const setIsGenerating   = useLayoutStore((state) => state.setIsGenerating)
-  const setGenerationError = useLayoutStore((state) => state.setGenerationError)
-  const isGenerating      = useLayoutStore((state) => state.isGenerating)
-  const generationError   = useLayoutStore((state) => state.generationError)
+export default function useLayoutGenerator() {
+  const [isGenerating, setIsGenerating] = useState(false)
+  const [error, setError] = useState(null)
 
-  const polygonPoints = useLandStore((state) => state.polygonPoints)
-  const unit          = useLandStore((state) => state.unit)
-  const roadSide      = useLandStore((state) => state.roadSide)
-  const northAngle    = useLandStore((state) => state.northAngle)
+  // Write results into layoutStore — EditorPage reads layoutStore.layoutOptions
+  const setLayoutOptions = useLayoutStore((s) => s.setLayoutOptions)
 
-  const mode         = useRequirementsStore((state) => state.mode)
-  const floors       = useRequirementsStore((state) => state.floors)
-  const vastuEnabled = useRequirementsStore((state) => state.vastuEnabled)
-  const bedroomCount = useRequirementsStore((state) => state.bedroomCount)
-  const rooms        = useRequirementsStore((state) => state.rooms)
+  const polygonPoints = useLandStore((s) => s.polygonPoints)
+  const unit          = useLandStore((s) => s.unit)
+  const roadSide      = useLandStore((s) => s.roadSide)
+  const northAngle    = useLandStore((s) => s.northAngle)
+  const dimensions    = useLandStore((s) => s.dimensions)
 
-  const generate = async () => {
-    // Validate polygon client-side before hitting the backend
-    const validationError = validatePolygon(polygonPoints)
-    if (validationError) {
-      setGenerationError(validationError)
-      return
-    }
+  const mode          = useRequirementsStore((s) => s.mode)
+  const floors        = useRequirementsStore((s) => s.floors)
+  const vastuEnabled  = useRequirementsStore((s) => s.vastuEnabled)
+  const bedroomCount  = useRequirementsStore((s) => s.bedroomCount)
+  const hasLivingRoom = useRequirementsStore((s) => s.hasLivingRoom)
+  const hasDiningRoom = useRequirementsStore((s) => s.hasDiningRoom)
+  const hasKitchen    = useRequirementsStore((s) => s.hasKitchen)
+  const rooms         = useRequirementsStore((s) => s.rooms)
+  const customPrompt  = useRequirementsStore((s) => s.customPrompt)
 
+  const generate = useCallback(async () => {
+    setError(null)
     setIsGenerating(true)
-    setGenerationError(null)
 
-    // FIXED: backend schema expects 'land_data' not 'land'
     const payload = {
       land_data: {
         polygonPoints,
         unit,
         roadSide,
         northAngle,
+        dimensions,
       },
       requirements: {
         mode,
         floors,
         vastuEnabled,
-        bedroomCount: mode === 'basic' ? bedroomCount : undefined,
-        rooms: mode === 'advanced' ? rooms : undefined,
+        bedroomCount,
+        hasLivingRoom,
+        hasDiningRoom,
+        hasKitchen,
+        rooms,
+        customPrompt,
       },
     }
 
     try {
-      const data = await generateLayout(payload)
-      setLayoutOptions(data.data?.layouts ?? [])
+      const result = await generateLayout(payload)
+
+      if (!result.success) {
+        setError(result.message || 'Generation failed')
+        return null
+      }
+
+      const generatedLayouts = result.data?.layouts ?? []
+      // Write into Zustand so EditorPage's layoutOptions selector picks it up
+      setLayoutOptions(generatedLayouts)
+      return generatedLayouts
     } catch (err) {
-      // FIXED: always extract string message — never pass Error object to store
-      const message = err?.message || err?.response?.data?.message || 'Layout generation failed'
-      setGenerationError(message)
+      setError(err.message)
+      return null
     } finally {
       setIsGenerating(false)
     }
-  }
+  }, [
+    polygonPoints, unit, roadSide, northAngle, dimensions,
+    mode, floors, vastuEnabled, bedroomCount,
+    hasLivingRoom, hasDiningRoom, hasKitchen, rooms, customPrompt,
+    setLayoutOptions,
+  ])
 
-  return { generate, isGenerating, generationError }
+  const reset = useCallback(() => {
+    setLayoutOptions([])
+    setError(null)
+  }, [setLayoutOptions])
+
+  return { generate, isGenerating, generationError: error, reset }
 }

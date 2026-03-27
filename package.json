@@ -4,16 +4,15 @@
   "private": true,
   "main": "electron/main.js",
   "scripts": {
-    "dev": "vite --config src/vite.config.js",
-    "build": "vite build --config src/vite.config.js",
-    "preview": "vite preview --config src/vite.config.js",
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
     "electron:dev": "cross-env NODE_ENV=development electron .",
     "electron:build": "electron-builder"
   },
   "dependencies": {
     "@react-three/drei": "^9.88.0",
     "@react-three/fiber": "^8.15.0",
-    "@tailwindcss/postcss": "^4.2.2",
     "axios": "^1.6.0",
     "konva": "^9.2.0",
     "react": "^18.2.0",

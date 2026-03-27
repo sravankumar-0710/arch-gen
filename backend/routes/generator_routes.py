@@ -21,21 +21,19 @@ async def generate_layout(
     """Generate multiple layout options from land and requirements."""
     import json
 
-    # MARKER
     try:
-        open('/tmp/MARKER_ROUTE_CALLED.txt', 'w').write('Route called')
-    except:
-        pass
-
-    try:
-        # Validate input
         if not request.land_data or 'polygonPoints' not in request.land_data:
             return JSONResponse(
                 status_code=400,
-                content={"success": False, "message": "Invalid land data"}
+                content={"success": False, "message": "Invalid land data: polygonPoints is required"}
             )
 
-        # Extract user ID safely
+        if not request.land_data.get('polygonPoints'):
+            return JSONResponse(
+                status_code=400,
+                content={"success": False, "message": "polygonPoints is empty — draw a plot first"}
+            )
+
         user_id = 1
         if isinstance(current_user, dict):
             uid = current_user.get('sub') or current_user.get('id')
@@ -44,7 +42,6 @@ async def generate_layout(
             except (ValueError, TypeError):
                 user_id = 1
 
-        # Generate layouts
         result = LayoutService.generate_layouts(
             dict(request.land_data),
             dict(request.requirements),
@@ -53,15 +50,14 @@ async def generate_layout(
 
         if not result.get('success'):
             return JSONResponse(
-                status_code=422,
+                status_code=500,
                 content={
                     "success": False,
-                    "message": result.get('error', 'Generation failed'),
+                    "message": result.get('error', 'Layout generation failed'),
                     "data": None
                 }
             )
 
-        # Build response
         response_content = {
             "success": True,
             "data": {
@@ -71,10 +67,7 @@ async def generate_layout(
             "message": f"Generated {len(result.get('layouts', []))} variants"
         }
 
-        return JSONResponse(
-            status_code=200,
-            content=response_content
-        )
+        return JSONResponse(status_code=200, content=response_content)
 
     except Exception as e:
         import traceback

@@ -1,197 +1,213 @@
 # filepath: backend/engine/geometry/room_placer.py
-# Purpose: Decomposes a plot polygon into room zones using multiple spatial strategies.
-# Each strategy produces a genuinely different arrangement of zones.
+# Purpose: Decomposes a plot polygon into room zones using Binary Space Partitioning (BSP).
+# BSP recursively splits space into pairs, always along the longer axis.
+# All thresholds are proportional to plot size — works at any coordinate scale.
 # All geometry via Shapely — never raw polygon math.
 
-import math
-from typing import List, Tuple
+import random
+from typing import List, Tuple, Optional
 from shapely.geometry import Polygon, MultiPolygon, box
 
 
 class RoomPlacer:
     """
-    Decomposes a plot polygon into spatial zones for room placement.
-    Provides three distinct strategies: horizontal bands, vertical bands, and L-split.
+    Decomposes a plot polygon into spatial zones using BSP.
+    Three strategies vary the split ratio to produce different layouts.
+    Thresholds scale with plot size so pixel-space and ft-space both work.
     """
 
     @staticmethod
-    def decompose_all_strategies(polygon: Polygon, num_rooms: int) -> List[Tuple[str, List[Polygon]]]:
+    def decompose_all_strategies(
+        polygon: Polygon,
+        num_rooms: int
+    ) -> List[Tuple[str, List[Polygon]]]:
         """
         Run all decomposition strategies and return each as a named list of zones.
 
         Args:
-            polygon: Plot polygon in real-world coordinates
+            polygon: Plot polygon in any coordinate space
             num_rooms: Number of rooms needed
 
         Returns:
-            List of (strategy_name, zones) tuples — each with enough zones for num_rooms
+            List of (strategy_name, zones) tuples with len(zones) >= num_rooms
         """
         strategies = [
-            ("Default (Vastu-Optimized)", RoomPlacer.decompose_horizontal(polygon, num_rooms)),
-            ("Compact Layout",            RoomPlacer.decompose_vertical(polygon, num_rooms)),
-            ("Privacy-Focused",           RoomPlacer.decompose_l_split(polygon, num_rooms)),
-            ("Open Plan",                 RoomPlacer.decompose_grid(polygon, num_rooms, split_bias=0.4)),
-            ("Split Level",               RoomPlacer.decompose_grid(polygon, num_rooms, split_bias=0.6)),
+            ("Courtyard",
+             RoomPlacer._bsp_decompose(polygon, num_rooms, bias_mode="balanced",  seed=1)),
+            ("Default (Vastu-Optimized)",
+             RoomPlacer._bsp_decompose(polygon, num_rooms, bias_mode="biased",    seed=2)),
+            ("Compact Layout",
+             RoomPlacer._bsp_decompose(polygon, num_rooms, bias_mode="clustered", seed=3)),
         ]
+        return [(name, zones) for name, zones in strategies if len(zones) >= num_rooms]
 
-        # Filter out strategies that didn't produce enough zones
-        valid = [(name, zones) for name, zones in strategies if len(zones) >= num_rooms]
-        return valid
+    # ─────────────────────────────────────────────────────────────
+    # BSP core
+    # ─────────────────────────────────────────────────────────────
 
     @staticmethod
-    def decompose_horizontal(polygon: Polygon, num_rooms: int) -> List[Polygon]:
+    def _bsp_decompose(
+        polygon: Polygon,
+        num_rooms: int,
+        bias_mode: str = "balanced",
+        seed: int = 0,
+    ) -> List[Polygon]:
         """
-        Slice the polygon into horizontal bands (cuts along Y axis).
-        Produces a top-to-bottom room arrangement — bedrooms at top, service at bottom.
+        Binary Space Partitioning decomposition.
+
+        Derives all thresholds proportionally from the plot so this works
+        correctly regardless of whether coordinates are in pixels or feet.
 
         Args:
             polygon: Plot polygon
-            num_rooms: Number of zones needed
+            num_rooms: Target number of zones
+            bias_mode: "balanced" | "biased" | "clustered"
+            seed: Random seed for reproducibility
 
         Returns:
-            List of Shapely Polygon zones
+            List of Shapely Polygon zones sorted largest first
         """
+        rng = random.Random(seed)
         minx, miny, maxx, maxy = polygon.bounds
-        height = maxy - miny
-        weights = RoomPlacer._height_weights(num_rooms)
+
+        plot_width  = maxx - minx
+        plot_height = maxy - miny
+        plot_area   = polygon.area
+
+        # Minimum zone area: 40% of an equal share of the total plot
+        # e.g. 5-room plot of 10000 units² → min zone = 10000/5*0.4 = 800 units²
+        min_zone_area = (plot_area / num_rooms) * 0.40
+
+        # Minimum dimension: 8% of the shorter plot side
+        # e.g. 100-unit wide plot → min dim = 8 units
+        min_dim = min(plot_width, plot_height) * 0.08
+
+        root   = box(minx, miny, maxx, maxy)
+        leaves = RoomPlacer._bsp_split(root, num_rooms, bias_mode, rng, min_dim)
+
         zones = []
-        y = miny
+        for leaf in leaves:
+            clipped = polygon.intersection(leaf)
+            cleaned = RoomPlacer._clean_zone(clipped, min_zone_area, min_dim)
+            if cleaned is not None:
+                zones.append(cleaned)
 
-        for w in weights:
-            band_h = height * w
-            band = box(minx, y, maxx, y + band_h)
-            zone = polygon.intersection(band)
-            y += band_h
-
-            zone = RoomPlacer._clean_zone(zone)
-            if zone is not None:
-                zones.append(zone)
-
-        return zones
-
-    @staticmethod
-    def decompose_vertical(polygon: Polygon, num_rooms: int) -> List[Polygon]:
-        """
-        Slice the polygon into vertical bands (cuts along X axis).
-        Produces a left-to-right room arrangement.
-
-        Args:
-            polygon: Plot polygon
-            num_rooms: Number of zones needed
-
-        Returns:
-            List of Shapely Polygon zones
-        """
-        minx, miny, maxx, maxy = polygon.bounds
-        width = maxx - minx
-        weights = RoomPlacer._width_weights(num_rooms)
-        zones = []
-        x = minx
-
-        for w in weights:
-            band_w = width * w
-            band = box(x, miny, x + band_w, maxy)
-            zone = polygon.intersection(band)
-            x += band_w
-
-            zone = RoomPlacer._clean_zone(zone)
-            if zone is not None:
-                zones.append(zone)
-
-        return zones
-
-    @staticmethod
-    def decompose_l_split(polygon: Polygon, num_rooms: int) -> List[Polygon]:
-        """
-        Split the polygon into an L-shaped arrangement with unequal proportions.
-        Top half split at 55%, bottom third split at 35%/65% — maximally different from grid.
-
-        Args:
-            polygon: Plot polygon
-            num_rooms: Number of zones needed
-
-        Returns:
-            List of Shapely Polygon zones
-        """
-        minx, miny, maxx, maxy = polygon.bounds
-        width = maxx - minx
-        height = maxy - miny
-
-        # Horizontal cut at 45% from bottom
-        h_cut = miny + height * 0.45
-
-        # Top section: split at 55% horizontally
-        top_zone = polygon.intersection(box(minx, h_cut, maxx, maxy))
-        top_mid_x = minx + width * 0.55
-        top_left  = RoomPlacer._clean_zone(top_zone.intersection(box(minx, h_cut, top_mid_x, maxy)))
-        top_right = RoomPlacer._clean_zone(top_zone.intersection(box(top_mid_x, h_cut, maxx, maxy)))
-
-        # Bottom section: split into thirds at 35% and 65%
-        bot_zone = polygon.intersection(box(minx, miny, maxx, h_cut))
-        b1x = minx + width * 0.35
-        b2x = minx + width * 0.65
-        bot_left   = RoomPlacer._clean_zone(bot_zone.intersection(box(minx, miny, b1x,  h_cut)))
-        bot_center = RoomPlacer._clean_zone(bot_zone.intersection(box(b1x,  miny, b2x,  h_cut)))
-        bot_right  = RoomPlacer._clean_zone(bot_zone.intersection(box(b2x,  miny, maxx, h_cut)))
-
-        # Return non-None zones sorted by area descending so largest zones come first
-        candidates = [top_left, top_right, bot_left, bot_center, bot_right]
-        zones = [z for z in candidates if z is not None]
         zones.sort(key=lambda z: z.area, reverse=True)
         return zones
 
     @staticmethod
-    def decompose_grid(polygon: Polygon, num_rooms: int, split_bias: float = 0.5) -> List[Polygon]:
+    def _bsp_split(
+        rect: Polygon,
+        num_leaves: int,
+        bias_mode: str,
+        rng: random.Random,
+        min_dim: float,
+    ) -> List[Polygon]:
         """
-        Grid-based decomposition with a configurable split bias.
-        split_bias < 0.5 skews cells leftward/upward; > 0.5 skews rightward/downward.
+        Recursively split a rectangle into num_leaves sub-rectangles.
 
         Args:
-            polygon: Plot polygon
-            num_rooms: Number of zones needed
-            split_bias: Float 0.3–0.7 controlling asymmetry
+            rect: Current rectangle
+            num_leaves: Target leaf count from this node
+            bias_mode: Split ratio strategy
+            rng: Seeded random instance
+            min_dim: Never produce a slice thinner than this
 
         Returns:
-            List of Shapely Polygon zones
+            List of leaf rectangles
         """
-        minx, miny, maxx, maxy = polygon.bounds
-        cols = math.ceil(math.sqrt(num_rooms))
-        rows = math.ceil(num_rooms / cols)
+        if num_leaves <= 1:
+            return [rect]
 
-        # Apply bias to first column/row width
-        col_widths = RoomPlacer._biased_splits(maxx - minx, cols, split_bias)
-        row_heights = RoomPlacer._biased_splits(maxy - miny, rows, split_bias)
+        minx, miny, maxx, maxy = rect.bounds
+        width  = maxx - minx
+        height = maxy - miny
 
-        zones = []
-        y = miny
-        for rh in row_heights:
-            x = minx
-            for cw in col_widths:
-                cell = box(x, y, x + cw, y + rh)
-                zone = polygon.intersection(cell)
-                z = RoomPlacer._clean_zone(zone)
-                if z is not None:
-                    zones.append(z)
-                x += cw
-            y += rh
+        left_count  = num_leaves // 2
+        right_count = num_leaves - left_count
+        ratio = RoomPlacer._split_ratio(bias_mode, left_count, right_count, rng)
 
-        return zones
+        if height >= width:
+            # Cut horizontally — top and bottom
+            split_y = miny + height * ratio
+            split_y = max(miny + min_dim, min(split_y, maxy - min_dim))
+            top    = box(minx, split_y, maxx, maxy)
+            bottom = box(minx, miny,    maxx, split_y)
+            return (
+                RoomPlacer._bsp_split(top,    left_count,  bias_mode, rng, min_dim) +
+                RoomPlacer._bsp_split(bottom, right_count, bias_mode, rng, min_dim)
+            )
+        else:
+            # Cut vertically — left and right
+            split_x = minx + width * ratio
+            split_x = max(minx + min_dim, min(split_x, maxx - min_dim))
+            left  = box(minx,    miny, split_x, maxy)
+            right = box(split_x, miny, maxx,    maxy)
+            return (
+                RoomPlacer._bsp_split(left,  left_count,  bias_mode, rng, min_dim) +
+                RoomPlacer._bsp_split(right, right_count, bias_mode, rng, min_dim)
+            )
+
+    @staticmethod
+    def _split_ratio(
+        bias_mode: str,
+        left_count: int,
+        right_count: int,
+        rng: random.Random,
+    ) -> float:
+        """
+        Compute the split ratio (0–1) for the current BSP node.
+
+        Args:
+            bias_mode: "balanced" | "biased" | "clustered"
+            left_count: Rooms assigned to top/left child
+            right_count: Rooms assigned to bottom/right child
+            rng: Seeded random instance
+
+        Returns:
+            Float split position in (0, 1)
+        """
+        total = left_count + right_count
+
+        if bias_mode == "balanced":
+            base   = left_count / total
+            jitter = rng.uniform(-0.08, 0.08)
+            return max(0.25, min(0.75, base + jitter))
+
+        elif bias_mode == "biased":
+            base      = left_count / total
+            stretched = 0.5 + (base - 0.5) * 1.4
+            return max(0.35, min(0.65, stretched))
+
+        elif bias_mode == "clustered":
+            if left_count <= right_count:
+                return rng.uniform(0.30, 0.40)
+            else:
+                return rng.uniform(0.60, 0.70)
+
+        return left_count / total
 
     # ─────────────────────────────────────────────────────────────
-    # Internal helpers
+    # Helpers
     # ─────────────────────────────────────────────────────────────
 
     @staticmethod
-    def _clean_zone(zone) -> Polygon | None:
+    def _clean_zone(
+        zone,
+        min_area: float,
+        min_dim: float,
+    ) -> Optional[Polygon]:
         """
-        Normalize a zone geometry: extract largest polygon from MultiPolygon,
-        discard degenerate shapes.
+        Normalize zone geometry and reject degenerate shapes.
+        Thresholds are passed from the caller so they scale with the plot.
 
         Args:
             zone: Shapely geometry from intersection
+            min_area: Minimum acceptable zone area (proportional to plot)
+            min_dim: Minimum acceptable bounding box dimension
 
         Returns:
-            Shapely Polygon or None if zone is too small
+            Shapely Polygon or None
         """
         if zone is None or zone.is_empty:
             return None
@@ -199,67 +215,10 @@ class RoomPlacer:
             zone = max(zone.geoms, key=lambda g: g.area)
         if not isinstance(zone, Polygon):
             return None
-        if zone.area < 0.5:
+        if zone.area < min_area:
+            return None
+        minx, miny, maxx, maxy = zone.bounds
+        half_min = min_dim * 0.5
+        if (maxx - minx) < half_min or (maxy - miny) < half_min:
             return None
         return zone
-
-    @staticmethod
-    def _height_weights(n: int) -> List[float]:
-        """
-        Proportional height weights for horizontal slices.
-        Larger rooms (bedrooms, living) get more height than bathrooms.
-        """
-        presets = {
-            1: [1.0],
-            2: [0.55, 0.45],
-            3: [0.38, 0.35, 0.27],
-            4: [0.30, 0.28, 0.25, 0.17],
-            5: [0.26, 0.24, 0.22, 0.17, 0.11],
-            6: [0.22, 0.20, 0.18, 0.16, 0.14, 0.10],
-        }
-        if n in presets:
-            return presets[n]
-        # Geometric decay for n > 6
-        base = [1.0 / (1.15 ** i) for i in range(n)]
-        total = sum(base)
-        return [b / total for b in base]
-
-    @staticmethod
-    def _width_weights(n: int) -> List[float]:
-        """
-        Proportional width weights for vertical slices.
-        """
-        presets = {
-            1: [1.0],
-            2: [0.45, 0.55],
-            3: [0.30, 0.40, 0.30],
-            4: [0.22, 0.30, 0.28, 0.20],
-            5: [0.18, 0.24, 0.26, 0.20, 0.12],
-            6: [0.15, 0.20, 0.22, 0.20, 0.15, 0.08],
-        }
-        if n in presets:
-            return presets[n]
-        base = [1.0 / (1.1 ** i) for i in range(n)]
-        total = sum(base)
-        return [b / total for b in base]
-
-    @staticmethod
-    def _biased_splits(total: float, n: int, bias: float) -> List[float]:
-        """
-        Split a total length into n segments with a bias applied to first segment.
-        bias=0.5 gives equal splits; bias=0.3 shrinks first segment, 0.7 grows it.
-
-        Args:
-            total: Total length to split
-            n: Number of segments
-            bias: Proportion bias for first segment (0.3–0.7)
-
-        Returns:
-            List of segment lengths summing to total
-        """
-        if n == 1:
-            return [total]
-        first = total * bias
-        remaining = total - first
-        rest = [remaining / (n - 1)] * (n - 1)
-        return [first] + rest

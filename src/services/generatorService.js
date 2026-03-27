@@ -3,14 +3,20 @@
 
 import api from './api.js'
 
-// FIXED: accepts a single payload object { land_data, requirements }
-// to match how useLayoutGenerator.js calls it: generateLayout(payload)
 export async function generateLayout(payload) {
   try {
     const response = await api.post('/generate', payload)
     return response.data
   } catch (error) {
-    throw new Error(`Layout generation failed: ${error.response?.data?.detail || error.message}`)
+    const detail = error.response?.data?.detail
+    const message = error.response?.data?.message
+
+    // Pydantic 422 errors return detail as an array of field-level errors
+    const readable = Array.isArray(detail)
+      ? detail.map((d) => `${d.loc?.slice(-1)[0]}: ${d.msg}`).join(', ')
+      : (detail || message || error.message)
+
+    throw new Error(`Layout generation failed: ${readable}`)
   }
 }
 

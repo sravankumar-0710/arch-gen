@@ -10,7 +10,7 @@ import GeneratingState from '../components/layout-generator/GeneratingState.jsx'
 import LayoutSelector from '../components/layout-generator/LayoutSelector.jsx'
 import useLandStore from '../store/landStore.js'
 import useLayoutStore from '../store/layoutStore.js'
-import { useLayoutGenerator } from '../hooks/useLayoutGenerator.js'
+import useLayoutGenerator from '../hooks/useLayoutGenerator.js'
 import * as projectService from '../services/projectService.js'
 
 const STEPS = [

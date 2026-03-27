@@ -50,3 +50,6 @@ htmlcov/
 .claude/
 docs/
 debug/
+
+scripts/
+Converting_Regex_to_Finite_Automata.pptx
