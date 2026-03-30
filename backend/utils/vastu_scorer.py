@@ -60,6 +60,11 @@ VASTU_DIRECTIONS = {
         'primary': ['NW', 'W'],
         'secondary': ['SW'],
         'flexible': ['N']
+    },
+    'staircase': {
+        'primary': ['SW', 'S', 'W'],
+        'secondary': ['SE', 'NW'],
+        'flexible': [] # Avoid center and NE
     }
 }
 

@@ -84,11 +84,15 @@ function estimatePlotAreaSqft(polygonPoints, unit) {
  * Estimates total required room area from basic mode inputs.
  * Returns total in square feet.
  */
-function estimateRequiredAreaBasic({ bedroomCount, hasKitchen, hasLivingRoom, hasDiningRoom }) {
+function estimateRequiredAreaBasic({ bedroomCount, hasKitchen, hasLivingRoom, hasDiningRoom, hasStaircase, hasBalcony }) {
   let total = bedroomCount * MIN_ROOM_AREA_SQFT.bedroom
   if (hasKitchen)    total += MIN_ROOM_AREA_SQFT.kitchen
   if (hasLivingRoom) total += MIN_ROOM_AREA_SQFT.living
   if (hasDiningRoom) total += MIN_ROOM_AREA_SQFT.dining
+  // Add staircase area if multi-floor or explicitly requested
+  if (hasStaircase)  total += MIN_ROOM_AREA_SQFT.staircase
+  // Add a default balcony area
+  if (hasBalcony)    total += MIN_ROOM_AREA_SQFT.balcony
   // Add estimated bathroom area (1 per bedroom + 1 shared)
   total += (bedroomCount + 1) * MIN_ROOM_AREA_SQFT.bathroom
   return total
@@ -118,6 +122,8 @@ export function validateRoomFit({
   hasKitchen,
   hasLivingRoom,
   hasDiningRoom,
+  hasStaircase,
+  hasBalcony,
   floors,
   rooms,
   polygonPoints,
@@ -140,7 +146,7 @@ export function validateRoomFit({
 
   const requiredArea =
     mode === 'basic'
-      ? estimateRequiredAreaBasic({ bedroomCount, hasKitchen, hasLivingRoom, hasDiningRoom })
+      ? estimateRequiredAreaBasic({ bedroomCount, hasKitchen, hasLivingRoom, hasDiningRoom, hasStaircase: floors > 1 || hasStaircase, hasBalcony })
       : estimateRequiredAreaAdvanced(rooms)
 
   // Total buildable area = plot area × floors, applying a 70% coverage factor

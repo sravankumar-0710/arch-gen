@@ -28,6 +28,8 @@ export default function useLayoutGenerator() {
   const hasLivingRoom = useRequirementsStore((s) => s.hasLivingRoom)
   const hasDiningRoom = useRequirementsStore((s) => s.hasDiningRoom)
   const hasKitchen    = useRequirementsStore((s) => s.hasKitchen)
+  const hasStaircase  = useRequirementsStore((s) => s.hasStaircase)
+  const hasBalcony    = useRequirementsStore((s) => s.hasBalcony)
   const rooms         = useRequirementsStore((s) => s.rooms)
   const customPrompt  = useRequirementsStore((s) => s.customPrompt)
 
@@ -51,6 +53,8 @@ export default function useLayoutGenerator() {
         hasLivingRoom,
         hasDiningRoom,
         hasKitchen,
+        hasStaircase,
+        hasBalcony,
         rooms,
         customPrompt,
       },
@@ -77,7 +81,7 @@ export default function useLayoutGenerator() {
   }, [
     polygonPoints, unit, roadSide, northAngle, dimensions,
     mode, floors, vastuEnabled, bedroomCount,
-    hasLivingRoom, hasDiningRoom, hasKitchen, rooms, customPrompt,
+    hasLivingRoom, hasDiningRoom, hasKitchen, hasStaircase, hasBalcony, rooms, customPrompt,
     setLayoutOptions,
   ])
 

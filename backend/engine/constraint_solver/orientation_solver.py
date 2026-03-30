@@ -17,7 +17,7 @@ ROAD_FACING_DIRECTION = {
 ROAD_FACING_ROOMS = ['living_room', 'entrance', 'balcony', 'dining_room']
 
 # Rooms that should NOT face the road
-ROAD_AVOIDING_ROOMS = ['master_bedroom', 'bathroom', 'staircase']
+ROAD_AVOIDING_ROOMS = ['master_bedroom', 'bedroom', 'bathroom', 'staircase']
 
 
 class OrientationSolver:
