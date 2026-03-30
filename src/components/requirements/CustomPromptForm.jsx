@@ -2,6 +2,7 @@
 // Purpose: Free-text AI prompt input — lets users describe layout preferences in plain English.
 // The prompt is sent to Gemini alongside the structured form data for richer generation.
 
+import React from 'react'
 import useRequirementsStore from '../../store/requirementsStore.js'
 
 // Example prompts shown as clickable chips to guide users

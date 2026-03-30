@@ -1,7 +1,7 @@
 // filepath: src/components/land-input/LandInputPanel.jsx
 // Purpose: Complete land input interface — canvas, dimension input, road side, north angle, save.
 
-import { useState } from 'react'
+import React, { useState } from 'react'
 import useLandStore from '../../store/landStore.js'
 import LandCanvas from './LandCanvas.jsx'
 import DimensionInput from './DimensionInput.jsx'

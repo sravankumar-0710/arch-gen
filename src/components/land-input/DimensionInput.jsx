@@ -1,7 +1,7 @@
 // filepath: src/components/land-input/DimensionInput.jsx
 // Purpose: Width × Height input fields for rectangle mode — auto-draws rectangle on canvas
 
-import { useState } from 'react'
+import React, { useState } from 'react'
 import useLandStore from '../../store/landStore.js'
 
 // Canvas dimensions must match LandCanvas constants

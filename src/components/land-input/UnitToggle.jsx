@@ -1,6 +1,7 @@
 // filepath: src/components/land-input/UnitToggle.jsx
 // Purpose: Toggle between feet and meters for plot dimensions
 
+import React from 'react'
 import useLandStore from '../../store/landStore.js'
 
 const UNIT_OPTIONS = [

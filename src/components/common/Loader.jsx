@@ -1,6 +1,8 @@
 // filepath: src/components/common/Loader.jsx
 // Purpose: Full-screen loading spinner — shown while auth state is being resolved.
 
+import React from 'react'
+
 export default function Loader() {
   return (
     <div className="h-screen w-screen bg-[#0a0a0c] flex items-center justify-center">

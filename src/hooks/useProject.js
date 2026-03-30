@@ -1,7 +1,7 @@
 // filepath: src/hooks/useProject.js
 // Purpose: Custom hook for project CRUD actions and state access.
 
-import { useEffect } from 'react'
+import React, { useEffect } from 'react'
 import useProjectStore from '../store/projectStore.js'
 
 export default function useProject() {

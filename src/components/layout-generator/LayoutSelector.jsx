@@ -1,7 +1,7 @@
 // filepath: src/components/layout-generator/LayoutSelector.jsx
 // Purpose: Grid of generated layout options — renders real room polygons from backend data
 
-import { useState } from 'react'
+import React, { useState } from 'react'
 
 // Color map for room types
 const ROOM_COLORS = {

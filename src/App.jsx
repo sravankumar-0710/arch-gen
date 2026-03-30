@@ -1,7 +1,7 @@
 // filepath: src/App.jsx
 // Purpose: Root component — sets up React Router and calls loadUser on mount.
 
-import { useEffect } from 'react'
+import React, { useEffect } from 'react'
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import LoginPage from './pages/LoginPage.jsx'
 import SignupPage from './pages/SignupPage.jsx'

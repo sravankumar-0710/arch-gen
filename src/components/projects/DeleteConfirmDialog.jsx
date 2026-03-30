@@ -1,7 +1,7 @@
 // filepath: src/components/projects/DeleteConfirmDialog.jsx
 // Purpose: Confirmation dialog before deleting a project
 
-import { useState } from 'react'
+import React, { useState } from 'react'
 import useProject from '../../hooks/useProject.js'
 import Button from '../common/Button.jsx'
 

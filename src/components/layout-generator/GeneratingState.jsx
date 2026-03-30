@@ -1,6 +1,8 @@
 // filepath: src/components/layout-generator/GeneratingState.jsx
 // Purpose: Animated loading screen shown while layout generation is in progress
 
+import React from 'react'
+
 const GENERATION_STEPS = ['Geometry', 'Rooms', 'Vastu', 'Optimizing']
 
 export default function GeneratingState() {

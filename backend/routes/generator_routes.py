@@ -36,11 +36,7 @@ async def generate_layout(
 
         user_id = 1
         if isinstance(current_user, dict):
-            uid = current_user.get('sub') or current_user.get('id')
-            try:
-                user_id = int(uid) if uid else 1
-            except (ValueError, TypeError):
-                user_id = 1
+            user_id = current_user.get('user_id', 1)
 
         result = LayoutService.generate_layouts(
             dict(request.land_data),

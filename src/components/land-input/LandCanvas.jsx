@@ -1,6 +1,7 @@
 // filepath: src/components/land-input/LandCanvas.jsx
 // Purpose: Konva.js canvas stage for drawing and displaying the plot polygon.
 
+import React from 'react'
 import { Stage, Layer, Line } from 'react-konva'
 import useCanvas from '../../hooks/useCanvas.js'
 import PolygonDrawer from './PolygonDrawer.jsx'

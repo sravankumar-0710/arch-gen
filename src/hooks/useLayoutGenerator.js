@@ -2,7 +2,7 @@
 // Purpose: Orchestrates layout generation — reads stores, builds payload, calls service.
 // Writes results into layoutStore so EditorPage and LayoutSelector can read them.
 
-import { useState, useCallback } from 'react'
+import React, { useState, useCallback } from 'react'
 import useLandStore from '../store/landStore.js'
 import useRequirementsStore from '../store/requirementsStore.js'
 import useLayoutStore from '../store/layoutStore.js'

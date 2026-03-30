@@ -1,7 +1,7 @@
 // filepath: src/pages/DashboardPage.jsx
 // Purpose: Dashboard — Linear-style sidebar layout with project grid and stats.
 
-import { useEffect, useState } from 'react'
+import React, { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import useAuth from '../hooks/useAuth.js'
 import useProject from '../hooks/useProject.js'

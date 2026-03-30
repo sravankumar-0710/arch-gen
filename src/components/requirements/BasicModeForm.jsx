@@ -1,6 +1,7 @@
 // filepath: src/components/requirements/BasicModeForm.jsx
 // Purpose: Simple room configuration form — bedrooms, floors, and common amenity toggles.
 
+import React from 'react'
 import useRequirementsStore from '../../store/requirementsStore.js'
 
 const FLOOR_OPTIONS = [1, 2, 3]

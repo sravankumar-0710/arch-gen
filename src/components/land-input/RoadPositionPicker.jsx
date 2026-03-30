@@ -1,6 +1,7 @@
 // filepath: src/components/land-input/RoadPositionPicker.jsx
 // Purpose: Select which side of the polygon faces the road.
 
+import React from 'react'
 import useLandStore from '../../store/landStore.js'
 
 // ASSUMPTION: roadSide is one of: 0 | 1 | 2 | 3 (front/right/back/left)

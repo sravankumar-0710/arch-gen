@@ -1,7 +1,7 @@
 // filepath: src/components/layout-results/LayoutResultsPanel.jsx
 // Purpose: Display generated layout variants with scores and selection
 
-import { useState } from 'react'
+import React, { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import LayoutPreview from './LayoutPreview.jsx'
 import Button from '../common/Button.jsx'

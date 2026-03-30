@@ -1,7 +1,7 @@
 // filepath: src/components/layout-results/LayoutPreview.jsx
 // Purpose: Render a floor plan layout using react-konva (rooms, walls, doors, windows)
 
-import { useMemo } from 'react'
+import React, { useMemo } from 'react'
 import { Stage, Layer, Line, Rect, Text, Circle } from 'react-konva'
 
 // Color map for room types — used for fill on the canvas

@@ -1,6 +1,7 @@
 // filepath: src/pages/SignupPage.jsx
 // Purpose: Signup page — matching split panel layout.
 
+import React from 'react'
 import { useNavigate } from 'react-router-dom'
 import SignupForm from '../components/auth/SignupForm.jsx'
 

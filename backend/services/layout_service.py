@@ -330,6 +330,7 @@ class LayoutService:
         """Build room configuration list from requirements."""
         rooms = []
         mode = requirements.get('mode', 'basic')
+        logger.debug(f"Building room configs for mode: {mode}")
 
         if mode == 'basic':
             bedroom_count = requirements.get('bedroomCount', 2)
@@ -351,6 +352,32 @@ class LayoutService:
             bathroom_count = max(1, (bedroom_count + 2) // 3)
             for _ in range(bathroom_count):
                 rooms.append({'room_type': 'bathroom', 'min_area': 40, 'max_area': 80})
+
+        elif mode == 'prompt':
+            # Use basic config as a base if AI prompt mode is selected
+            # AI will decide room types/counts based on prompt, but we need
+            # a list of rooms to validate and assign.
+            # If the user has rooms in the advanced list, use those.
+            advanced_rooms = requirements.get('rooms', [])
+            if advanced_rooms:
+                rooms = advanced_rooms
+            else:
+                # Fallback to basic if no advanced rooms set
+                bedroom_count = requirements.get('bedroomCount', 2)
+                for i in range(bedroom_count):
+                    if i == 0:
+                        rooms.append({'room_type': 'master_bedroom', 'min_area': 140, 'max_area': 250})
+                    else:
+                        rooms.append({'room_type': 'bedroom', 'min_area': 90, 'max_area': 160})
+                if requirements.get('hasKitchen', True):
+                    rooms.append({'room_type': 'kitchen', 'min_area': 80, 'max_area': 150})
+                if requirements.get('hasLivingRoom', True):
+                    rooms.append({'room_type': 'living_room', 'min_area': 150, 'max_area': 300})
+                if requirements.get('hasDiningRoom', True):
+                    rooms.append({'room_type': 'dining_room', 'min_area': 100, 'max_area': 200})
+                bathroom_count = max(1, (bedroom_count + 2) // 3)
+                for _ in range(bathroom_count):
+                    rooms.append({'room_type': 'bathroom', 'min_area': 40, 'max_area': 70})
         else:
             rooms = requirements.get('rooms', [])
 

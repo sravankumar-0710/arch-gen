@@ -1,8 +1,8 @@
 // filepath: src/pages/EditorPage.jsx
 // Purpose: Main editor page — phased workflow orchestrator
 
+import React, { useState, useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { useState, useEffect } from 'react'
 import LandInputPanel from '../components/land-input/LandInputPanel.jsx'
 import StepIndicator from '../components/editor/StepIndicator.jsx'
 import RequirementsPanel from '../components/requirements/RequirementsPanel.jsx'
