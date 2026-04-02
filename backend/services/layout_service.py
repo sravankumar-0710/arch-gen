@@ -92,16 +92,8 @@ class LayoutService:
         if not polygon.is_valid:
             raise ValueError("Invalid polygon: self-intersecting or degenerate")
 
-        # India NBC 2016 minimum for a habitable plot with rooms
-        # A 2BHK needs at minimum ~600 sqft; enforce a safe lower bound of 300 sqft
-        # so users get a clear message instead of a silent "No layout zones generated"
-        MIN_VIABLE_AREA = 300  # sqft — absolute floor for any layout generation
-        if polygon.area < MIN_VIABLE_AREA:
-            raise ValueError(
-                f"Plot area is too small ({polygon.area:.0f} sqft). "
-                f"Minimum required is {MIN_VIABLE_AREA} sqft. "
-                f"Please draw a larger plot on the canvas."
-            )
+        if polygon.area < 10:
+            raise ValueError("Plot area too small")
 
         return polygon
 
@@ -111,7 +103,9 @@ class LayoutService:
         rooms = []
         mode = requirements.get('mode', 'basic')
 
-        if mode == 'basic':
+        # 'prompt' mode still uses basic room config — the custom prompt is additive,
+        # not a replacement for room configuration. Treat it the same as 'basic'.
+        if mode in ('basic', 'prompt'):
             bedroom_count = requirements.get('bedroomCount', 2)
             for i in range(bedroom_count):
                 if i == 0:

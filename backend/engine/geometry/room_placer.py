@@ -19,7 +19,8 @@ class RoomPlacer:
     @staticmethod
     def decompose_all_strategies(
         polygon: Polygon,
-        num_rooms: int
+        num_rooms: int,
+        room_configs: List[dict] = None,
     ) -> List[Tuple[str, List[Polygon]]]:
         """
         Run all decomposition strategies and return each as a named list of zones.
@@ -27,17 +28,24 @@ class RoomPlacer:
         Args:
             polygon: Plot polygon in any coordinate space
             num_rooms: Number of rooms needed
+            room_configs: Optional list of {room_type, min_area, max_area} — used for
+                          area-weighted splits so bathrooms don't get bedroom-sized zones.
 
         Returns:
             List of (strategy_name, zones) tuples with len(zones) >= num_rooms
         """
+        # Request extra zones per strategy to absorb clipping losses on irregular polygons.
+        # Each strategy uses a different seed so they produce meaningfully different layouts.
         strategies = [
             ("Courtyard",
-             RoomPlacer._bsp_decompose(polygon, num_rooms, bias_mode="balanced",  seed=1)),
+             RoomPlacer._bsp_decompose(polygon, num_rooms, bias_mode="balanced",
+                                       seed=1, room_configs=room_configs)),
             ("Default (Vastu-Optimized)",
-             RoomPlacer._bsp_decompose(polygon, num_rooms, bias_mode="biased",    seed=2)),
+             RoomPlacer._bsp_decompose(polygon, num_rooms, bias_mode="biased",
+                                       seed=2, room_configs=room_configs)),
             ("Compact Layout",
-             RoomPlacer._bsp_decompose(polygon, num_rooms, bias_mode="clustered", seed=3)),
+             RoomPlacer._bsp_decompose(polygon, num_rooms, bias_mode="clustered",
+                                       seed=3, room_configs=room_configs)),
         ]
         return [(name, zones) for name, zones in strategies if len(zones) >= num_rooms]
 
@@ -51,18 +59,21 @@ class RoomPlacer:
         num_rooms: int,
         bias_mode: str = "balanced",
         seed: int = 0,
+        room_configs: List[dict] = None,
     ) -> List[Polygon]:
         """
-        Binary Space Partitioning decomposition.
+        Binary Space Partitioning decomposition with optional area-weighted splits.
 
-        Derives all thresholds proportionally from the plot so this works
-        correctly regardless of whether coordinates are in pixels or feet.
+        When room_configs is provided, split ratios are weighted by cumulative min_area
+        so large rooms (living room, master bedroom) get proportionally larger zones
+        and small rooms (bathroom) don't end up bedroom-sized.
 
         Args:
             polygon: Plot polygon
             num_rooms: Target number of zones
             bias_mode: "balanced" | "biased" | "clustered"
             seed: Random seed for reproducibility
+            room_configs: Optional [{room_type, min_area, max_area}] for area weighting
 
         Returns:
             List of Shapely Polygon zones sorted largest first
@@ -74,16 +85,29 @@ class RoomPlacer:
         plot_height = maxy - miny
         plot_area   = polygon.area
 
-        # Minimum zone area: 40% of an equal share of the total plot
-        # e.g. 5-room plot of 10000 units² → min zone = 10000/5*0.4 = 800 units²
-        min_zone_area = (plot_area / num_rooms) * 0.40
+        # Request extra leaf cells to absorb clipping losses on irregular polygons.
+        target_leaves = num_rooms + 3
 
-        # Minimum dimension: 8% of the shorter plot side
-        # e.g. 100-unit wide plot → min dim = 8 units
-        min_dim = min(plot_width, plot_height) * 0.08
+        # Lower thresholds so irregular-polygon slivers don't over-reject.
+        min_zone_area = (plot_area / target_leaves) * 0.20
+        min_dim = min(plot_width, plot_height) * 0.06
+
+        # Build area weights: proportional target sizes per leaf based on room min_area.
+        # This makes bathrooms small and living rooms large before Vastu assignment.
+        area_weights = None
+        if room_configs:
+            avg = sum(r.get("min_area", 100) for r in room_configs) / len(room_configs)
+            # Sort descending — BSP produces largest zones first
+            weights = sorted(
+                [r.get("min_area", 100) for r in room_configs] + [avg] * 3,
+                reverse=True,
+            )
+            total_w = sum(weights)
+            area_weights = [w / total_w for w in weights]
 
         root   = box(minx, miny, maxx, maxy)
-        leaves = RoomPlacer._bsp_split(root, num_rooms, bias_mode, rng, min_dim)
+        leaves = RoomPlacer._bsp_split(root, target_leaves, bias_mode, rng, min_dim,
+                                       area_weights=area_weights)
 
         zones = []
         for leaf in leaves:
@@ -95,6 +119,7 @@ class RoomPlacer:
         zones.sort(key=lambda z: z.area, reverse=True)
         return zones
 
+
     @staticmethod
     def _bsp_split(
         rect: Polygon,
@@ -102,6 +127,8 @@ class RoomPlacer:
         bias_mode: str,
         rng: random.Random,
         min_dim: float,
+        area_weights: List[float] = None,
+        weight_offset: int = 0,
     ) -> List[Polygon]:
         """
         Recursively split a rectangle into num_leaves sub-rectangles.
@@ -112,6 +139,8 @@ class RoomPlacer:
             bias_mode: Split ratio strategy
             rng: Seeded random instance
             min_dim: Never produce a slice thinner than this
+            area_weights: Optional proportional target sizes per leaf (sums to 1.0)
+            weight_offset: Index offset into area_weights for this subtree
 
         Returns:
             List of leaf rectangles
@@ -125,7 +154,17 @@ class RoomPlacer:
 
         left_count  = num_leaves // 2
         right_count = num_leaves - left_count
-        ratio = RoomPlacer._split_ratio(bias_mode, left_count, right_count, rng)
+
+        # Use area-weighted ratio if weights provided, otherwise use bias_mode
+        if area_weights and len(area_weights) >= weight_offset + num_leaves:
+            left_weight  = sum(area_weights[weight_offset : weight_offset + left_count])
+            right_weight = sum(area_weights[weight_offset + left_count : weight_offset + num_leaves])
+            total_weight = left_weight + right_weight
+            ratio = left_weight / total_weight if total_weight > 0 else 0.5
+            # Clamp to reasonable range to prevent degenerate splits
+            ratio = max(0.25, min(0.75, ratio))
+        else:
+            ratio = RoomPlacer._split_ratio(bias_mode, left_count, right_count, rng)
 
         if height >= width:
             # Cut horizontally — top and bottom
@@ -134,8 +173,10 @@ class RoomPlacer:
             top    = box(minx, split_y, maxx, maxy)
             bottom = box(minx, miny,    maxx, split_y)
             return (
-                RoomPlacer._bsp_split(top,    left_count,  bias_mode, rng, min_dim) +
-                RoomPlacer._bsp_split(bottom, right_count, bias_mode, rng, min_dim)
+                RoomPlacer._bsp_split(top,    left_count,  bias_mode, rng, min_dim,
+                                      area_weights, weight_offset) +
+                RoomPlacer._bsp_split(bottom, right_count, bias_mode, rng, min_dim,
+                                      area_weights, weight_offset + left_count)
             )
         else:
             # Cut vertically — left and right
@@ -144,8 +185,10 @@ class RoomPlacer:
             left  = box(minx,    miny, split_x, maxy)
             right = box(split_x, miny, maxx,    maxy)
             return (
-                RoomPlacer._bsp_split(left,  left_count,  bias_mode, rng, min_dim) +
-                RoomPlacer._bsp_split(right, right_count, bias_mode, rng, min_dim)
+                RoomPlacer._bsp_split(left,  left_count,  bias_mode, rng, min_dim,
+                                      area_weights, weight_offset) +
+                RoomPlacer._bsp_split(right, right_count, bias_mode, rng, min_dim,
+                                      area_weights, weight_offset + left_count)
             )
 
     @staticmethod

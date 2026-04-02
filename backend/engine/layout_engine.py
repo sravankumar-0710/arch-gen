@@ -4,6 +4,7 @@
 # Never call engine sub-modules directly from outside the engine.
 
 import logging
+import traceback as tb
 from typing import Dict, List, Tuple
 from shapely.geometry import Polygon
 from shapely.ops import unary_union
@@ -88,7 +89,11 @@ class LayoutEngine:
                     logger.warning("AI generation failed — using BSP fallback")
                     generation_method = "bsp"
 
-                bsp_sets = RoomPlacer.decompose_all_strategies(polygon, num_rooms)
+                logger.warning("BSP input: polygon_area=%.1f, num_rooms=%d, bounds=%s",
+                              polygon.area, num_rooms, polygon.bounds)
+                bsp_sets = RoomPlacer.decompose_all_strategies(polygon, num_rooms, room_configs)
+                logger.warning("BSP produced %d strategies: %s",
+                              len(bsp_sets), [name for name, _ in bsp_sets])
                 for bsp_name, bsp_zones in bsp_sets:
                     if len(zone_sets) >= 3:
                         break
@@ -98,23 +103,37 @@ class LayoutEngine:
                 return EngineResult(success=False, data=None, errors=["No layout zones generated"])
 
             # ── Step 3: Build variants from zone sets ────────────────────────
+            logger.info(f"Building variants from {len(zone_sets)} zone sets, need {num_rooms} rooms")
             variants = []
             for strategy_name, zones in zone_sets[:3]:
+                logger.info(f"Strategy '{strategy_name}': {len(zones)} zones")
                 if len(zones) < num_rooms:
+                    logger.warning(f"Skipping '{strategy_name}': only {len(zones)} zones, need {num_rooms}")
                     continue
 
                 assignments = LayoutEngine._assign_rooms_vastu(
-                    zones[:num_rooms], room_configs, plot_center, 
+                    zones[:num_rooms], room_configs, plot_center,
                     land_data.get('northAngle', 0), land_data.get('roadSide', 0)
                 )
+                logger.info(f"  assignments: {len(assignments)}")
 
-                variant = LayoutEngine._create_variant(
-                    assignments, polygon, plot_center, land_data, strategy_name
+                try:
+                    variant = LayoutEngine._create_variant(
+                        assignments, polygon, plot_center, land_data, strategy_name
+                    )
+                    variants.append(variant)
+                    logger.info(f"  variant built OK")
+                except Exception as ve:
+                    logger.error("_create_variant failed for '%s': %s | %s", strategy_name, ve, tb.format_exc())
+
+            if not variants:
+                return EngineResult(
+                    success=False, data=None,
+                    errors=["All layout strategies failed to produce valid room zones. Try drawing a larger plot."]
                 )
-                variants.append(variant)
 
             return EngineResult(
-                success=True, 
+                success=True,
                 data={
                     'variants': variants,
                     'generationMethod': generation_method
@@ -122,7 +141,8 @@ class LayoutEngine:
             )
 
         except Exception as e:
-            logger.error(f"Engine generation error: {e}")
+            # Log full traceback so the real crash is visible in uvicorn output
+            logger.error("Engine generation error: %s | %s", e, tb.format_exc())
             return EngineResult(success=False, data=None, errors=[str(e)])
 
     @staticmethod

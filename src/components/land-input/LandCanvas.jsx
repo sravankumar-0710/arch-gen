@@ -9,6 +9,7 @@ import PolygonDrawer from './PolygonDrawer.jsx'
 const CANVAS_WIDTH = 800
 const CANVAS_HEIGHT = 600
 const GRID_SPACING = 50
+// Scale: 50px = 10ft (5px per foot). Each grid cell = 10ft × 10ft.
 
 export default function LandCanvas() {
   const {
@@ -51,6 +52,16 @@ export default function LandCanvas() {
             />
           </Layer>
         </Stage>
+      </div>
+
+      {/* Scale indicator — 50px grid = 10ft per cell at 5px/ft */}
+      <div className="flex items-center gap-3 px-1">
+        <div className="flex items-center gap-1.5">
+          <div className="w-[50px] h-[2px] bg-[#5a5855]" />
+          <span className="text-[11px] text-[#5a5855]">= 10 ft per grid cell</span>
+        </div>
+        <span className="text-[11px] text-[#5a5855]">·</span>
+        <span className="text-[11px] text-[#5a5855]">Minimum plot: 30 × 30 ft (3 × 3 cells)</span>
       </div>
 
       {/* Validation error */}

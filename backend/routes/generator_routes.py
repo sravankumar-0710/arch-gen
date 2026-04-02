@@ -45,8 +45,10 @@ async def generate_layout(
         )
 
         if not result.get('success'):
+            # 422 Unprocessable Entity — engine understood the request but could not generate
+            # Using 422 (not 500) so the error message reaches the frontend correctly
             return JSONResponse(
-                status_code=500,
+                status_code=422,
                 content={
                     "success": False,
                     "message": result.get('error', 'Layout generation failed'),
