@@ -36,11 +36,7 @@ async def generate_layout(
 
         user_id = 1
         if isinstance(current_user, dict):
-            uid = current_user.get('sub') or current_user.get('id')
-            try:
-                user_id = int(uid) if uid else 1
-            except (ValueError, TypeError):
-                user_id = 1
+            user_id = current_user.get('user_id', 1)
 
         result = LayoutService.generate_layouts(
             dict(request.land_data),
@@ -49,8 +45,10 @@ async def generate_layout(
         )
 
         if not result.get('success'):
+            # 422 Unprocessable Entity — engine understood the request but could not generate
+            # Using 422 (not 500) so the error message reaches the frontend correctly
             return JSONResponse(
-                status_code=500,
+                status_code=422,
                 content={
                     "success": False,
                     "message": result.get('error', 'Layout generation failed'),

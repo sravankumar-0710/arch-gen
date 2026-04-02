@@ -1,7 +1,7 @@
 // filepath: src/components/projects/EditProjectModal.jsx
 // Purpose: Modal dialog to edit project name and description
 
-import { useState, useEffect } from 'react'
+import React, { useState, useEffect } from 'react'
 import useProject from '../../hooks/useProject.js'
 import Button from '../common/Button.jsx'
 

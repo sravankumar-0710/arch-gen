@@ -6,6 +6,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from config import settings
 from database import init_db
+from models import user_model, project_model
 from routes.auth_routes import router as auth_router
 from routes.project_routes import router as project_router
 from routes.generator_routes import router as generator_router
@@ -27,8 +28,6 @@ app = FastAPI(
 )
 
 # Add CORS middleware to allow frontend requests
-# NOTE: allow_origins=["*"] cannot be used with allow_credentials=True — browsers block it.
-# Use explicit origins instead. Add any new dev ports here if Vite picks a different one.
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[

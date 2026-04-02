@@ -1,6 +1,7 @@
 // filepath: src/components/common/ProtectedRoute.jsx
 // Purpose: Redirects unauthenticated users to /login. Shows loader while auth state is resolving.
 
+import React from 'react'
 import { Navigate } from 'react-router-dom'
 import useAuth from '../../hooks/useAuth.js'
 import Loader from './Loader.jsx'

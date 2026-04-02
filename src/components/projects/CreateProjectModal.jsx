@@ -1,7 +1,7 @@
 // filepath: src/components/projects/CreateProjectModal.jsx
 // Purpose: Modal dialog to create a new project
 
-import { useState } from 'react'
+import React, { useState } from 'react'
 import useProject from '../../hooks/useProject.js'
 import Button from '../common/Button.jsx'
 

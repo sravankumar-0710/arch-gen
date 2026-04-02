@@ -7,14 +7,17 @@ import math
 from typing import List, Tuple, Dict
 
 
-def canvas_to_real(polygon_points: List[Dict], unit: str, pixels_per_unit: float = 20) -> Polygon:
+def canvas_to_real(polygon_points: List[Dict], unit: str, pixels_per_unit: float = 5) -> Polygon:
     """
     Convert canvas pixel coordinates to a real-world Shapely Polygon.
 
     Args:
         polygon_points: List of {x, y} points in canvas coordinates
         unit: "ft" or "m" (stored for scaling context)
-        pixels_per_unit: Conversion factor (default 20 pixels = 1 unit)
+        pixels_per_unit: Conversion factor (default 5 pixels = 1 unit).
+                         Canvas grid spacing is 50px. At 5px/ft each grid cell = 10ft.
+                         A typical Indian residential plot of 30x40ft = 150x200px,
+                         which is comfortably drawable on the 800x600 canvas.
 
     Returns:
         Shapely Polygon in real-world coordinates

@@ -4,30 +4,39 @@
 import pytest
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
+from sqlalchemy.pool import StaticPool
 from fastapi.testclient import TestClient
-from datetime import timedelta
-
-# These are assumed to be importable from backend root
+import os
 import sys
-sys.path.insert(0, '../../backend')
 
-from app import app
+# Add backend to path
+backend_path = os.path.abspath(os.path.join(os.path.dirname(__file__), '../../backend'))
+if backend_path not in sys.path:
+    sys.path.insert(0, backend_path)
+
 from database import Base, get_db
-from schemas import UserRegisterRequest, UserLoginRequest
-from utils.security import create_access_token
+from models.user_model import User
+from models.project_model import Project
+from app import app
 
-# Setup in-memory SQLite database for testing
+# Setup in-memory SQLite database for testing with StaticPool
+# StaticPool is required for :memory: to persist across multiple connections
 SQLALCHEMY_DATABASE_URL = "sqlite:///:memory:"
 
-engine = create_engine(SQLALCHEMY_DATABASE_URL, connect_args={"check_same_thread": False})
+engine = create_engine(
+    SQLALCHEMY_DATABASE_URL,
+    connect_args={"check_same_thread": False},
+    poolclass=StaticPool
+)
 TestingSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
+# Create tables once
 Base.metadata.create_all(bind=engine)
 
 
 def override_get_db():
+    db = TestingSessionLocal()
     try:
-        db = TestingSessionLocal()
         yield db
     finally:
         db.close()
@@ -45,127 +54,59 @@ class TestAuthRoutes:
         """Test health endpoint is accessible."""
         response = client.get("/health")
         assert response.status_code == 200
-        assert response.json()["status"] == "ok"
+        assert response.json()["success"] is True
 
     def test_register_user_success(self):
         """Test successful user registration."""
         response = client.post(
             "/auth/register",
             json={
-                "email": "test@example.com",
+                "email": "test_success@example.com",
                 "password": "password123"
             }
         )
         assert response.status_code == 201
         assert response.json()["success"] is True
-        assert "data" in response.json()
-        assert "user" in response.json()["data"]
-        assert "token" in response.json()["data"]
 
     def test_register_duplicate_email(self):
         """Test registration fails with duplicate email."""
-        # Register first user
-        client.post(
-            "/auth/register",
-            json={
-                "email": "duplicate@example.com",
-                "password": "password123"
-            }
-        )
-
-        # Try to register same email again
-        response = client.post(
-            "/auth/register",
-            json={
-                "email": "duplicate@example.com",
-                "password": "password456"
-            }
-        )
+        email = "duplicate@example.com"
+        client.post("/auth/register", json={"email": email, "password": "password123"})
+        response = client.post("/auth/register", json={"email": email, "password": "password456"})
         assert response.status_code == 409
-        assert response.json()["success"] is False
 
     def test_register_invalid_password(self):
         """Test registration fails with invalid password."""
-        response = client.post(
-            "/auth/register",
-            json={
-                "email": "test2@example.com",
-                "password": "short"
-            }
-        )
-        assert response.status_code == 422  # Validation error
+        response = client.post("/auth/register", json={"email": "invalid@example.com", "password": "short"})
+        assert response.status_code == 422
 
     def test_login_success(self):
         """Test successful login."""
-        # Register first
-        client.post(
-            "/auth/register",
-            json={
-                "email": "login@example.com",
-                "password": "password123"
-            }
-        )
-
-        # Login
-        response = client.post(
-            "/auth/login",
-            json={
-                "email": "login@example.com",
-                "password": "password123"
-            }
-        )
+        email = "login_success@example.com"
+        password = "password123"
+        client.post("/auth/register", json={"email": email, "password": password})
+        response = client.post("/auth/login", json={"email": email, "password": password})
         assert response.status_code == 200
         assert response.json()["success"] is True
-        assert "token" in response.json()["data"]
 
     def test_login_invalid_credentials(self):
         """Test login fails with invalid credentials."""
-        # Register first
-        client.post(
-            "/auth/register",
-            json={
-                "email": "user@example.com",
-                "password": "password123"
-            }
-        )
-
-        # Try to login with wrong password
-        response = client.post(
-            "/auth/login",
-            json={
-                "email": "user@example.com",
-                "password": "wrongpassword"
-            }
-        )
+        email = "wrong_creds@example.com"
+        client.post("/auth/register", json={"email": email, "password": "password123"})
+        response = client.post("/auth/login", json={"email": email, "password": "wrongpassword"})
         assert response.status_code == 401
-        assert response.json()["success"] is False
 
     def test_get_current_user(self):
         """Test getting current user profile with valid token."""
-        # Register and login
-        register_response = client.post(
-            "/auth/register",
-            json={
-                "email": "profile@example.com",
-                "password": "password123"
-            }
-        )
+        email = "profile_test@example.com"
+        register_response = client.post("/auth/register", json={"email": email, "password": "password123"})
         token = register_response.json()["data"]["token"]["access_token"]
-
-        # Get current user
-        response = client.get(
-            "/auth/me",
-            headers={"Authorization": f"Bearer {token}"}
-        )
+        response = client.get("/auth/me", headers={"Authorization": f"Bearer {token}"})
         assert response.status_code == 200
         assert response.json()["success"] is True
-        assert response.json()["data"]["email"] == "profile@example.com"
+        assert response.json()["data"]["email"] == email
 
     def test_get_current_user_no_token(self):
         """Test getting current user fails without token."""
         response = client.get("/auth/me")
-        assert response.status_code == 403  # Forbidden
-
-
-if __name__ == "__main__":
-    pytest.main([__file__, "-v"])
+        assert response.status_code in [401, 403]

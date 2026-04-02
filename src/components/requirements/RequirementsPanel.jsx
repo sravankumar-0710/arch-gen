@@ -2,6 +2,7 @@
 // Purpose: Room configuration UI — composes BasicModeForm, AdvancedModeForm, CustomPromptForm,
 // and VastuOptions. Three tabs: Basic | Advanced | AI Prompt.
 
+import React from 'react'
 import useRequirementsStore from '../../store/requirementsStore.js'
 import useLandStore from '../../store/landStore.js'
 import useLayoutGenerator from '../../hooks/useLayoutGenerator.js'

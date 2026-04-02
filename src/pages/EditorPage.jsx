@@ -1,8 +1,8 @@
 // filepath: src/pages/EditorPage.jsx
 // Purpose: Main editor page — phased workflow orchestrator
 
+import React, { useState, useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { useState, useEffect } from 'react'
 import LandInputPanel from '../components/land-input/LandInputPanel.jsx'
 import StepIndicator from '../components/editor/StepIndicator.jsx'
 import RequirementsPanel from '../components/requirements/RequirementsPanel.jsx'
@@ -12,12 +12,14 @@ import useLandStore from '../store/landStore.js'
 import useLayoutStore from '../store/layoutStore.js'
 import useLayoutGenerator from '../hooks/useLayoutGenerator.js'
 import * as projectService from '../services/projectService.js'
+import FloorPlanCanvas from '../components/floor-plan/FloorPlanCanvas.jsx'
 
 const STEPS = [
   { id: 'land',         label: 'Draw Plot' },
   { id: 'requirements', label: 'Configure' },
   { id: 'generating',   label: 'Generate' },
   { id: 'results',      label: 'Select Layout' },
+  { id: 'editor',       label: 'Edit' },
 ]
 
 export default function EditorPage() {
@@ -28,6 +30,9 @@ export default function EditorPage() {
   const [isSaving, setIsSaving] = useState(false)
   const [pageLoading, setPageLoading] = useState(true)
   const [error, setError] = useState(null)
+  // Layout being edited in step 5
+  const [editingLayout, setEditingLayout] = useState(null)
+  const [editedRooms, setEditedRooms] = useState(null)
 
   const { setPolygonPoints, setRoadSide, setNorthAngle, setUnit } = useLandStore()
 
@@ -92,10 +97,20 @@ export default function EditorPage() {
     generate()
   }
 
-  async function handleSaveLayout(layout) {
+  function handleSaveLayout(layout) {
+    // Go to editor step with the selected layout — don't save to DB yet
+    setEditingLayout(layout)
+    setEditedRooms(null)
+    setPhase('editor')
+  }
+
+  async function handleFinalSave() {
     setIsSaving(true)
     try {
-      await projectService.updateProject(projectId, { layout })
+      const layoutToSave = editedRooms
+        ? { ...editingLayout, rooms: editedRooms }
+        : editingLayout
+      await projectService.updateProject(projectId, { layout: layoutToSave })
       navigate('/dashboard')
     } catch (err) {
       setError(err.message)
@@ -181,6 +196,38 @@ export default function EditorPage() {
             isSaving={isSaving}
             onBack={() => setPhase('requirements')}
           />
+        ) : phase === 'editor' ? (
+          <div className="p-6 flex flex-col gap-6 max-w-[1000px] mx-auto w-full">
+            <div className="flex items-center justify-between">
+              <div>
+                <h2 className="font-serif text-2xl font-normal text-[#f0ede8] mb-1">
+                  Edit floor plan
+                </h2>
+                <p className="text-[#5a5855] text-sm m-0">
+                  Drag rooms to reposition · Drag corners to resize · Snaps to grid
+                </p>
+              </div>
+              <div className="flex items-center gap-3">
+                <button
+                  onClick={() => setPhase('results')}
+                  className="px-4 py-2 text-sm text-[#9d9a94] bg-transparent border border-white/[0.08] rounded-lg cursor-pointer hover:border-white/20 transition-colors font-[inherit]"
+                >
+                  ← Back to layouts
+                </button>
+                <button
+                  onClick={handleFinalSave}
+                  disabled={isSaving}
+                  className="px-6 py-2 text-sm font-semibold bg-[#d4a832] text-[#0a0a0c] rounded-lg border-none cursor-pointer hover:bg-[#f0c84a] transition-colors disabled:opacity-50 font-[inherit]"
+                >
+                  {isSaving ? 'Saving…' : 'Save & finish →'}
+                </button>
+              </div>
+            </div>
+            <FloorPlanCanvas
+              layout={editingLayout}
+              onChange={setEditedRooms}
+            />
+          </div>
         ) : null}
       </main>
     </div>

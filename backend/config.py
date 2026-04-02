@@ -2,6 +2,7 @@
 # Purpose: Centralized environment configuration — crashes loudly if required vars are missing.
 
 import os
+from typing import Optional
 from functools import lru_cache
 from pydantic_settings import BaseSettings
 
@@ -21,6 +22,7 @@ class Settings(BaseSettings):
     debug: bool = False
     host: str = "127.0.0.1"
     port: int = 8000
+    gemini_api_key: Optional[str] = None
 
     class Config:
         env_file = ".env"

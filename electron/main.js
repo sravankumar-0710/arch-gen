@@ -28,10 +28,10 @@ function createWindow() {
 
   // Load Vite dev server in development, built index.html in production
   if (isDev) {
-    mainWindow.loadURL('http://localhost:5173')
+    mainWindow.loadURL('http://localhost:5182')
     mainWindow.webContents.openDevTools()
   } else {
-    mainWindow.loadFile(path.join(__dirname, '../src/dist/index.html'))
+    mainWindow.loadFile(path.join(__dirname, '../dist/index.html'))
   }
 
   // Show window once it's ready to prevent white flash

@@ -9,6 +9,7 @@ export default defineConfig({
   plugins: [react()],
   server: {
     port: 5182,
+    strictPort: true,  // Crash if port is taken, don't silently pick another
   },
   build: {
     outDir: '../dist',

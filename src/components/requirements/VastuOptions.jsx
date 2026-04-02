@@ -1,6 +1,7 @@
 // filepath: src/components/requirements/VastuOptions.jsx
 // Purpose: Vastu Shastra compliance toggle and preset rule display panel.
 
+import React from 'react'
 import useRequirementsStore from '../../store/requirementsStore.js'
 import { VASTU_RULE_DESCRIPTIONS } from '../../utils/vastuRules.js'
 

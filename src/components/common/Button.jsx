@@ -1,6 +1,8 @@
 // filepath: src/components/common/Button.jsx
 // Purpose: Base button component with variant and size support. Used throughout the app.
 
+import React from 'react'
+
 const VARIANTS = {
   primary: 'bg-brand-500 hover:bg-brand-600 text-white border border-brand-400',
   secondary: 'bg-surface-raised hover:bg-surface-overlay text-slate-200 border border-surface-border',

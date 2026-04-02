@@ -1,6 +1,7 @@
 // filepath: src/components/projects/ProjectCard.jsx
 // Purpose: Card component for displaying a single project with edit/delete actions
 
+import React from 'react'
 import { useNavigate } from 'react-router-dom'
 import LayoutPreview from '../layout-results/LayoutPreview.jsx'
 

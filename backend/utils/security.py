@@ -7,12 +7,15 @@ from passlib.context import CryptContext
 from config import settings
 
 # Passlib context using bcrypt for password hashing
-_pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+# Support both argon2 and bcrypt for backward compatibility with existing users
+# Use argon2 as the default to avoid bcrypt's 72-byte limit and potential Windows initialization issues
+_pwd_context = CryptContext(schemes=["argon2", "bcrypt"], deprecated="auto")
 
 
 def hash_password(password: str) -> str:
     """
     Hash a plaintext password using bcrypt.
+    Truncates to 72 bytes to avoid passlib/bcrypt ValueError.
 
     Args:
         password: Plaintext password string
@@ -20,12 +23,15 @@ def hash_password(password: str) -> str:
     Returns:
         Bcrypt-hashed password string
     """
-    return _pwd_context.hash(password)
+    # Truncate to 72 bytes (standard bcrypt limit)
+    truncated_password = password[:72] if len(password) > 72 else password
+    return _pwd_context.hash(truncated_password)
 
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
     """
     Verify a plaintext password against a bcrypt hash.
+    Truncates to 72 bytes to avoid passlib/bcrypt ValueError.
 
     Args:
         plain_password: Plaintext password to verify
@@ -34,7 +40,9 @@ def verify_password(plain_password: str, hashed_password: str) -> bool:
     Returns:
         True if password matches, False otherwise
     """
-    return _pwd_context.verify(plain_password, hashed_password)
+    # Truncate to 72 bytes (standard bcrypt limit)
+    truncated_password = plain_password[:72] if len(plain_password) > 72 else plain_password
+    return _pwd_context.verify(truncated_password, hashed_password)
 
 
 def create_access_token(data: dict) -> str:

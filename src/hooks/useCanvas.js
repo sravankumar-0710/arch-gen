@@ -2,7 +2,7 @@
 // Purpose: Canvas interaction logic for polygon drawing — click, mousemove, undo, reset, close.
 // Extracted from LandCanvas so the component body stays purely presentational.
 
-import { useState, useRef } from 'react'
+import React, { useState, useRef } from 'react'
 import useLandStore from '../store/landStore.js'
 import { validatePolygon } from '../utils/geometry.js'
 import { isNearPoint } from '../utils/canvasHelpers.js'

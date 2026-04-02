@@ -1,6 +1,8 @@
 // filepath: src/components/editor/StepIndicator.jsx
 // Purpose: Visual step progress bar shown in the EditorPage header
 
+import React from 'react'
+
 export default function StepIndicator({ steps, currentStep }) {
   return (
     <div className="flex items-center gap-0">

@@ -1,7 +1,7 @@
 // filepath: src/hooks/useUndoRedo.js
 // Purpose: Custom hook for undo/redo operations — connects keyboard shortcuts to editorStore.
 
-import { useEffect } from 'react'
+import React, { useEffect } from 'react'
 import useEditorStore from '../store/editorStore.js'
 import useLayoutStore from '../store/layoutStore.js'
 

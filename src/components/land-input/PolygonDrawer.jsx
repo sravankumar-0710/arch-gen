@@ -2,6 +2,7 @@
 // Purpose: Polygon drawing tool — renders drawing lines, preview cursor line, and point handles.
 // Receives all state and handlers from LandCanvas via props (no direct store access).
 
+import React from 'react'
 import { Line, Circle, Text } from 'react-konva'
 
 const POINT_RADIUS = 6

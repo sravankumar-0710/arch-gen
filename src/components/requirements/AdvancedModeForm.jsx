@@ -1,6 +1,7 @@
 // filepath: src/components/requirements/AdvancedModeForm.jsx
 // Purpose: Advanced room configuration form — per-room constraint rows with type, direction, area, and flags.
 
+import React from 'react'
 import useRequirementsStore from '../../store/requirementsStore.js'
 import RoomConstraintRow from './RoomConstraintRow.jsx'
 

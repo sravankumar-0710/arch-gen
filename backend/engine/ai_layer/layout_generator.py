@@ -12,6 +12,7 @@ import requests
 from shapely.geometry import Polygon, box
 
 from engine.ai_layer.prompt_builder import PromptBuilder
+from config import settings
 
 logger = logging.getLogger(__name__)
 
@@ -51,9 +52,9 @@ class AILayoutGenerator:
         Returns:
             List of (name, zones) tuples — each with len(zones) == len(room_configs)
         """
-        api_key = os.getenv("GEMINI_API_KEY", "")
+        api_key = settings.gemini_api_key
         if not api_key:
-            logger.warning("GEMINI_API_KEY not set — AI layout generation unavailable")
+            logger.warning("GEMINI_API_KEY not set in config — AI layout generation unavailable")
             return []
 
         minx, miny, maxx, maxy = plot_polygon.bounds
@@ -124,8 +125,8 @@ class AILayoutGenerator:
         payload = {
             "contents": [{"parts": [{"text": prompt}]}],
             "generationConfig": {
-                "temperature": 0.2,
-                "topP": 0.8,
+                "temperature": 0.7,
+                "topP": 0.95,
                 "maxOutputTokens": 2048,
             },
         }

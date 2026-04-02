@@ -1,7 +1,7 @@
 // filepath: src/components/land-input/NorthAnglePicker.jsx
 // Purpose: Set the north direction angle (0-360 degrees, clockwise from up)
 
-import { useState } from 'react'
+import React, { useState } from 'react'
 import useLandStore from '../../store/landStore.js'
 
 export default function NorthAnglePicker() {

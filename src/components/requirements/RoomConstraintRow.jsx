@@ -1,6 +1,7 @@
 // filepath: src/components/requirements/RoomConstraintRow.jsx
 // Purpose: Single room constraint entry row used by AdvancedModeForm — type, direction, area, flags.
 
+import React from 'react'
 import useRequirementsStore from '../../store/requirementsStore.js'
 import { DIRECTION_OPTIONS, VASTU_PREFERRED_DIRECTIONS } from '../../utils/vastuRules.js'
 

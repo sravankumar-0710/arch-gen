@@ -98,9 +98,11 @@ class PromptBuilder:
 1. Every room polygon must fit entirely within the plot boundary (0,0) to ({plot_width:.1f},{plot_height:.1f})
 2. No two rooms may overlap — they must tile the plot with no gaps larger than 2ft
 3. Every room must meet its minimum area requirement listed above
-4. No room dimension (width or height) may be less than 7 feet
-5. All coordinates must be positive numbers rounded to 1 decimal place
-6. Rooms must together cover at least 85% of total plot area
+4. RELATIVE SIZING: Living rooms and Bedrooms MUST be significantly larger than Bathrooms and Store rooms. A bathroom should typically be 40-70 sqft, while a Master Bedroom should be 140-200 sqft.
+5. No room dimension (width or height) may be less than 7 feet (except bathrooms which can be 5ft min)
+6. All coordinates must be positive numbers rounded to 1 decimal place
+7. Rooms must together cover at least 85% of total plot area
+8. DIVERSITY: Ensure the 3 variants have distinctly different spatial arrangements (e.g., L-shaped, open-plan, clustered).
 {vastu_section}
 ## Output Format
 Return ONLY a valid JSON array — no explanation, no markdown, no code fences.

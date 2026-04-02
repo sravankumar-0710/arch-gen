@@ -1,7 +1,7 @@
 // filepath: src/components/auth/SignupForm.jsx
 // Purpose: Signup form — email/password/confirm inputs, validation, submit handler.
 
-import { useState } from 'react'
+import React, { useState } from 'react'
 import { Link } from 'react-router-dom'
 import useAuth from '../../hooks/useAuth.js'
 import { validateEmail, validatePassword } from '../../utils/validators.js'
