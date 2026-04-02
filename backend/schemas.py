@@ -47,6 +47,9 @@ class ProjectCreateRequest(BaseModel):
     """Request body for creating a new project."""
     name: str = Field(..., min_length=1, max_length=255)
     description: Optional[str] = Field(None, max_length=1000)
+    land_data: Optional[dict] = None
+    requirements: Optional[dict] = None
+    layout: Optional[dict] = None
 
 
 class ProjectUpdateRequest(BaseModel):

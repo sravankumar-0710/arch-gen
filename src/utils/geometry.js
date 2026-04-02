@@ -163,3 +163,14 @@ export function computeBoundingBox(points) {
   const maxY = Math.max(...ys)
   return { minX, minY, maxX, maxY, width: maxX - minX, height: maxY - minY }
 }
+
+/**
+ * Computes the distance between two points {x, y}.
+ * 
+ * @param {{x: number, y: number}} p1
+ * @param {{x: number, y: number}} p2
+ * @returns {number}
+ */
+export function distance(p1, p2) {
+  return Math.sqrt(Math.pow(p2.x - p1.x, 2) + Math.pow(p2.y - p1.y, 2))
+}

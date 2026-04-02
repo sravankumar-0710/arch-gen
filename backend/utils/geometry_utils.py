@@ -7,14 +7,16 @@ import math
 from typing import List, Tuple, Dict
 
 
-def canvas_to_real(polygon_points: List[Dict], unit: str, pixels_per_unit: float = 20) -> Polygon:
+def canvas_to_real(polygon_points: List[Dict], unit: str, pixels_per_unit: float = 10) -> Polygon:
     """
     Convert canvas pixel coordinates to a real-world Shapely Polygon.
 
     Args:
         polygon_points: List of {x, y} points in canvas coordinates
         unit: "ft" or "m" (stored for scaling context)
-        pixels_per_unit: Conversion factor (default 20 pixels = 1 unit)
+        pixels_per_unit: Conversion factor (default 10 pixels = 1 unit).
+                         At 10px/ft a 300x400px canvas drawing = 30x40ft = 1200sqft,
+                         which is a standard Indian residential plot.
 
     Returns:
         Shapely Polygon in real-world coordinates

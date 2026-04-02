@@ -1,148 +1,58 @@
 # filepath: backend/services/layout_service.py
-# Purpose: Core layout generation — uses Gemini AI for room placement.
-# Falls back to BSP (RoomPlacer) if AI is unavailable or returns bad data.
-# Rule validation (NBC sizes, Vastu, adjacency) always runs regardless of generation method.
+# Purpose: Service layer for layout generation.
+# Orchestrates high-level logic and delegates to the engine (Rule 9).
 
-import math
 import logging
-from typing import Dict, List, Tuple
+from typing import Dict, List
+from shapely.geometry import Polygon
 
-from shapely.geometry import Polygon, MultiPolygon, box
-
-from engine.ai_layer.layout_generator import AILayoutGenerator
-from engine.geometry.room_placer import RoomPlacer
-from utils.geometry_utils import (
-    canvas_to_real, compute_zone_direction,
-    compute_plot_center, compute_polygon_area, generate_walls_from_zones,
-    validate_room_placement
-)
+from engine.layout_engine import LayoutEngine
+from utils.geometry_utils import canvas_to_real, compute_polygon_area
 from utils.vastu_scorer import VastuScorer
 
 logger = logging.getLogger(__name__)
-
-# Vastu-preferred directions per room type
-VASTU_PREFERRED = {
-    'master_bedroom': ['SW', 'S', 'W', 'SE'],
-    'bedroom':        ['S', 'SW', 'W', 'NW', 'N'],
-    'kitchen':        ['SE', 'NW', 'E'],
-    'living_room':    ['N', 'NE', 'E', 'SE'],
-    'dining_room':    ['W', 'E', 'N', 'S'],
-    'bathroom':       ['NW', 'W', 'N', 'S'],
-    'staircase':      ['S', 'SW', 'SE', 'W'],
-    'balcony':        ['N', 'NE', 'E'],
-    'pooja':          ['NE', 'N', 'E'],
-    'garage':         ['W', 'NW', 'SW'],
-    'store':          ['NW', 'W', 'SW'],
-    'entrance':       ['N', 'NE', 'E'],
-}
 
 
 class LayoutService:
     """
     Service for floor plan layout generation.
-    Primary path: Gemini AI generates room placements.
-    Fallback path: BSP RoomPlacer if AI unavailable.
-    Rule validation always runs on both paths.
+    Following Rule 9: All engine calls must go through LayoutEngine.
     """
 
     @staticmethod
     def generate_layouts(land_data: Dict, requirements: Dict, user_id: int = None) -> Dict:
         """
-        Main orchestrator: generate multiple layout variants for a plot.
-
-        Args:
-            land_data: {polygonPoints, unit, roadSide, northAngle, dimensions}
-            requirements: {mode, rooms, vastuEnabled, floors, bedroomCount, ...}
-            user_id: Authenticated user ID (unused in generation, kept for future logging)
-
-        Returns:
-            {success, layouts, plotInfo, error}
+        Main orchestrator: parse input and call the engine.
         """
         try:
             polygon = LayoutService._parse_land_data(land_data)
-            plot_center = compute_plot_center(polygon)
             plot_area = compute_polygon_area(polygon, land_data.get('unit', 'ft'))
             room_configs = LayoutService._build_room_configs(requirements)
 
             if not room_configs:
-                return {
-                    "success": False,
-                    "error": "No valid room configurations provided",
-                    "layouts": []
-                }
+                return {"success": False, "error": "No valid room configurations provided", "layouts": []}
 
-            num_rooms = len(room_configs)
-
-            # ── Step 1: Try AI generation first ──────────────────────────────
-            zone_sets = AILayoutGenerator.generate_all_variants(
-                plot_polygon=polygon,
+            # ── Delegate to Engine (Rule 9) ──────────────────────────────────
+            engine_result = LayoutEngine.generate(
+                polygon=polygon,
                 room_configs=room_configs,
                 land_data=land_data,
-                requirements=requirements,
+                requirements=requirements
             )
 
-            generation_method = "ai"
-
-            # ── Step 2: Fall back to BSP if AI failed or returned too few layouts ──
-            if len(zone_sets) < 3:
-                if zone_sets:
-                    logger.warning(
-                        f"AI returned only {len(zone_sets)} layouts — "
-                        "filling remaining with BSP fallback"
-                    )
-                else:
-                    logger.warning("AI generation failed entirely — using BSP fallback")
-                    generation_method = "bsp"
-
-                bsp_sets = RoomPlacer.decompose_all_strategies(polygon, num_rooms)
-                # Append BSP results until we have 3 total
-                for bsp_name, bsp_zones in bsp_sets:
-                    if len(zone_sets) >= 3:
-                        break
-                    # Rename BSP fallback variants so they're distinguishable
-                    fallback_name = f"{bsp_name} (Fallback)"
-                    zone_sets.append((fallback_name, bsp_zones))
-
-            if not zone_sets:
+            if not engine_result.success:
                 return {
                     "success": False,
-                    "error": "Could not generate layouts — plot may be too small or irregular",
+                    "error": engine_result.errors[0] if engine_result.errors else "Generation failed",
                     "layouts": []
                 }
 
-            # ── Step 3: Build variant dicts from zone sets ────────────────────
-            variants = []
-            for strategy_name, zones in zone_sets[:3]:
-                if len(zones) < num_rooms:
-                    logger.warning(
-                        f"Strategy '{strategy_name}' has {len(zones)} zones "
-                        f"but needs {num_rooms} — skipping"
-                    )
-                    continue
+            variants = engine_result.data.get('variants', [])
+            generation_method = engine_result.data.get('generationMethod', 'unknown')
 
-                assignments = LayoutService._assign_rooms_vastu(
-                    zones[:num_rooms],
-                    room_configs,
-                    plot_center,
-                    land_data.get('northAngle', 0),
-                    land_data.get('roadSide', 0),
-                )
-
-                variant = LayoutService._create_variant(
-                    assignments, polygon, plot_center, land_data, strategy_name
-                )
-                variants.append(variant)
-
-            if not variants:
-                return {
-                    "success": False,
-                    "error": "All layout strategies failed validation",
-                    "layouts": []
-                }
-
-            # ── Step 4: Score and rank variants ──────────────────────────────
+            # ── Score and rank variants ──────────────────────────────────────
             scored = LayoutService._score_variants(variants, requirements)
-            top = sorted(scored, key=lambda v: v['score'], reverse=True)[:3]
+            top = sorted(scored, key=lambda v: v.get('score', 0), reverse=True)[:3]
 
             return {
                 "success": True,
@@ -152,7 +62,7 @@ class LayoutService:
                     "unit": land_data.get('unit', 'ft'),
                     "roadSide": land_data.get('roadSide', 0),
                     "northAngle": land_data.get('northAngle', 0),
-                    "zonesGenerated": num_rooms,
+                    "zonesGenerated": len(room_configs),
                     "generationMethod": generation_method,
                 },
                 "error": None,
@@ -160,7 +70,7 @@ class LayoutService:
 
         except Exception as e:
             import traceback
-            logger.error(f"Layout generation error: {e}")
+            logger.error(f"Layout service error: {e}")
             return {
                 "success": False,
                 "error": str(e),
@@ -168,147 +78,9 @@ class LayoutService:
                 "details": traceback.format_exc()[:500],
             }
 
-    # ─────────────────────────────────────────────────────────────
-    # Room-to-zone assignment using Vastu direction scoring
-    # ─────────────────────────────────────────────────────────────
-
-    @staticmethod
-    def _assign_rooms_vastu(
-        zones: List[Polygon],
-        room_configs: List[Dict],
-        plot_center: Tuple,
-        north_angle: float,
-        road_side: int,
-    ) -> List[Dict]:
-        """
-        Assign room types to zones using greedy Vastu direction matching.
-
-        Args:
-            zones: List of Shapely Polygon zones (already ordered by AI/BSP)
-            room_configs: List of {room_type, min_area, max_area}
-            plot_center: (x, y) centroid of full plot
-            north_angle: North direction in degrees
-            road_side: Road side indicator
-
-        Returns:
-            List of {zone, room_config, direction, centroid} dicts
-        """
-        zone_info = []
-        for zone in zones:
-            centroid = (zone.centroid.x, zone.centroid.y)
-            direction = compute_zone_direction(
-                centroid, plot_center, north_angle, road_side
-            )
-            zone_info.append({
-                'zone': zone,
-                'centroid': centroid,
-                'direction': direction,
-            })
-
-        assigned = []
-        remaining_rooms = list(room_configs)
-
-        for zi in zone_info:
-            best_room = None
-            best_score = -1
-
-            for room in remaining_rooms:
-                rtype = room['room_type']
-                preferred = VASTU_PREFERRED.get(rtype, [])
-                if zi['direction'] in preferred:
-                    score = len(preferred) - preferred.index(zi['direction'])
-                else:
-                    score = 0
-                if score > best_score:
-                    best_score = score
-                    best_room = room
-
-            if best_room:
-                assigned.append({
-                    'zone': zi['zone'],
-                    'room_config': best_room,
-                    'direction': zi['direction'],
-                    'centroid': zi['centroid'],
-                })
-                remaining_rooms.remove(best_room)
-
-        return assigned
-
-    # ─────────────────────────────────────────────────────────────
-    # Variant creation, scoring, helpers
-    # ─────────────────────────────────────────────────────────────
-
-    @staticmethod
-    def _create_variant(
-        assignments: List[Dict],
-        plot_polygon: Polygon,
-        plot_center: Tuple,
-        land_data: Dict,
-        variant_name: str,
-    ) -> Dict:
-        """Build the variant dict from zone-room assignments."""
-        rooms = []
-
-        for idx, a in enumerate(assignments):
-            zone = a['zone']
-            room_config = a['room_config']
-            rooms.append({
-                'id': idx + 1,
-                'room_type': room_config['room_type'],
-                'polygon': zone,
-                'centroid': a['centroid'],
-                'direction': a['direction'],
-                'area': zone.area,
-                'min_area': room_config.get('min_area', 0),
-                'max_area': room_config.get('max_area', 10000),
-                'room_id': idx + 1,
-            })
-
-        valid, error_msg = validate_room_placement(rooms)
-        validation_warning = None if valid else error_msg
-
-        walls = []
-        try:
-            walls = generate_walls_from_zones(rooms)
-        except Exception as e:
-            logger.warning(f"Wall generation failed for '{variant_name}': {e}")
-
-        doors = LayoutService._generate_doors(walls, rooms)
-        windows = LayoutService._generate_windows(walls, rooms)
-
-        variant_dict = {
-            'id': 0,
-            'name': variant_name,
-            'rooms': [{
-                'id': r['id'],
-                'type': r['room_type'],
-                'area': r['area'],
-                'direction': r['direction'],
-                'centroid': list(r['centroid']),
-                'polygon': [
-                    [float(pt[0]), float(pt[1])]
-                    for pt in r['polygon'].exterior.coords
-                ],
-            } for r in rooms],
-            'walls': [{
-                'start': list(w['start']),
-                'end': list(w['end']),
-                'type': w['wall_type'],
-                'rooms': w['rooms'],
-            } for w in walls],
-            'doors': doors,
-            'windows': windows,
-            'score': 0,
-        }
-
-        if validation_warning:
-            variant_dict['warning'] = validation_warning
-
-        return variant_dict
-
     @staticmethod
     def _parse_land_data(land_data: Dict) -> Polygon:
-        """Parse and validate land data, returning a Shapely Polygon."""
+        """Parse and validate land data."""
         polygon_points = land_data.get('polygonPoints', [])
         unit = land_data.get('unit', 'ft')
 
@@ -320,8 +92,16 @@ class LayoutService:
         if not polygon.is_valid:
             raise ValueError("Invalid polygon: self-intersecting or degenerate")
 
-        if polygon.area < 10:
-            raise ValueError("Plot area too small")
+        # India NBC 2016 minimum for a habitable plot with rooms
+        # A 2BHK needs at minimum ~600 sqft; enforce a safe lower bound of 300 sqft
+        # so users get a clear message instead of a silent "No layout zones generated"
+        MIN_VIABLE_AREA = 300  # sqft — absolute floor for any layout generation
+        if polygon.area < MIN_VIABLE_AREA:
+            raise ValueError(
+                f"Plot area is too small ({polygon.area:.0f} sqft). "
+                f"Minimum required is {MIN_VIABLE_AREA} sqft. "
+                f"Please draw a larger plot on the canvas."
+            )
 
         return polygon
 
@@ -330,7 +110,6 @@ class LayoutService:
         """Build room configuration list from requirements."""
         rooms = []
         mode = requirements.get('mode', 'basic')
-        logger.debug(f"Building room configs for mode: {mode}")
 
         if mode == 'basic':
             bedroom_count = requirements.get('bedroomCount', 2)
@@ -342,90 +121,18 @@ class LayoutService:
 
             if requirements.get('hasKitchen', True):
                 rooms.append({'room_type': 'kitchen', 'min_area': 80, 'max_area': 150})
-
             if requirements.get('hasLivingRoom', True):
                 rooms.append({'room_type': 'living_room', 'min_area': 150, 'max_area': 300})
-
             if requirements.get('hasDiningRoom', True):
                 rooms.append({'room_type': 'dining_room', 'min_area': 100, 'max_area': 200})
-
+            
             bathroom_count = max(1, (bedroom_count + 2) // 3)
             for _ in range(bathroom_count):
                 rooms.append({'room_type': 'bathroom', 'min_area': 40, 'max_area': 80})
-
-        elif mode == 'prompt':
-            # Use basic config as a base if AI prompt mode is selected
-            # AI will decide room types/counts based on prompt, but we need
-            # a list of rooms to validate and assign.
-            # If the user has rooms in the advanced list, use those.
-            advanced_rooms = requirements.get('rooms', [])
-            if advanced_rooms:
-                rooms = advanced_rooms
-            else:
-                # Fallback to basic if no advanced rooms set
-                bedroom_count = requirements.get('bedroomCount', 2)
-                for i in range(bedroom_count):
-                    if i == 0:
-                        rooms.append({'room_type': 'master_bedroom', 'min_area': 140, 'max_area': 250})
-                    else:
-                        rooms.append({'room_type': 'bedroom', 'min_area': 90, 'max_area': 160})
-                if requirements.get('hasKitchen', True):
-                    rooms.append({'room_type': 'kitchen', 'min_area': 80, 'max_area': 150})
-                if requirements.get('hasLivingRoom', True):
-                    rooms.append({'room_type': 'living_room', 'min_area': 150, 'max_area': 300})
-                if requirements.get('hasDiningRoom', True):
-                    rooms.append({'room_type': 'dining_room', 'min_area': 100, 'max_area': 200})
-                bathroom_count = max(1, (bedroom_count + 2) // 3)
-                for _ in range(bathroom_count):
-                    rooms.append({'room_type': 'bathroom', 'min_area': 40, 'max_area': 70})
         else:
             rooms = requirements.get('rooms', [])
 
         return rooms
-
-    @staticmethod
-    def _generate_doors(walls: List[Dict], rooms: List[Dict]) -> List[Dict]:
-        """Generate door placements at midpoints of partition walls."""
-        doors = []
-        door_id = 1
-        for wall in walls:
-            if wall['wall_type'] == 'partition' and len(wall['rooms']) == 2:
-                start, end = wall['start'], wall['end']
-                doors.append({
-                    'id': door_id,
-                    'position': [
-                        (start[0] + end[0]) / 2,
-                        (start[1] + end[1]) / 2,
-                    ],
-                    'rooms': wall['rooms'],
-                    'width': 3.0,
-                })
-                door_id += 1
-        return doors
-
-    @staticmethod
-    def _generate_windows(walls: List[Dict], rooms: List[Dict]) -> List[Dict]:
-        """Generate window placements on exterior load-bearing walls."""
-        windows = []
-        window_id = 1
-        for wall in walls:
-            if wall['wall_type'] == 'load_bearing':
-                start, end = wall['start'], wall['end']
-                length = math.sqrt(
-                    (end[0] - start[0]) ** 2 + (end[1] - start[1]) ** 2
-                )
-                if length > 5:
-                    for pos in [0.33, 0.67]:
-                        windows.append({
-                            'id': window_id,
-                            'position': [
-                                start[0] + (end[0] - start[0]) * pos,
-                                start[1] + (end[1] - start[1]) * pos,
-                            ],
-                            'size': 3.0,
-                        })
-                        window_id += 1
-        return windows
 
     @staticmethod
     def _score_variants(variants: List[Dict], requirements: Dict) -> List[Dict]:
@@ -435,7 +142,7 @@ class LayoutService:
             rooms_for_scoring = [
                 {
                     'room_type': r['type'],
-                    'direction': r['direction'],
+                    'direction': r.get('direction', 'N'),
                     'area': r['area'],
                 }
                 for r in variant['rooms']
